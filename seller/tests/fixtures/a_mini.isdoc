@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Invoice xmlns="http://isdoc.cz/namespace/2013" version="6.0.2">
+  <DocumentType>1</DocumentType>
+  <ID>FV-0001</ID>
+  <IssueDate>2026-09-01</IssueDate>
+  <Note>DEMO</Note>
+  <LocalCurrencyCode>CZK</LocalCurrencyCode>
+  <AccountingSupplierParty><Party>
+    <PartyIdentification><ID>45274649</ID></PartyIdentification>
+    <PartyName><Name>ČEZ, a. s.</Name></PartyName>
+    <PartyTaxScheme><CompanyID>CZ45274649</CompanyID><TaxScheme>VAT</TaxScheme></PartyTaxScheme>
+  </Party></AccountingSupplierParty>
+  <InvoiceLines>
+    <InvoiceLine><ID>1</ID><InvoicedQuantity unitCode="ks">2</InvoicedQuantity><LineExtensionAmount>1000.00</LineExtensionAmount><UnitPrice>500.00</UnitPrice><ClassifiedTaxCategory><Percent>21</Percent><VATCalculationMethod>0</VATCalculationMethod></ClassifiedTaxCategory><Item><Description>Konzultace</Description></Item></InvoiceLine>
+    <InvoiceLine><ID>2</ID><InvoicedQuantity unitCode="ks">1</InvoicedQuantity><LineExtensionAmount>200.00</LineExtensionAmount><UnitPrice>200.00</UnitPrice><ClassifiedTaxCategory><Percent>12</Percent><VATCalculationMethod>0</VATCalculationMethod></ClassifiedTaxCategory><Item><Description>Kniha</Description></Item></InvoiceLine>
+  </InvoiceLines>
+  <TaxTotal><TaxAmount>234.00</TaxAmount></TaxTotal>
+  <LegalMonetaryTotal><TaxExclusiveAmount>1200.00</TaxExclusiveAmount><TaxInclusiveAmount>1434.00</TaxInclusiveAmount><PayableAmount>1434.00</PayableAmount></LegalMonetaryTotal>
+  <PaymentMeans><Payment><PaidAmount>1434.00</PaidAmount><PaymentMeansCode>42</PaymentMeansCode><Details><ID>123456789</ID><BankCode>0800</BankCode></Details></Payment></PaymentMeans>
+</Invoice>
