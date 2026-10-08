@@ -1,0 +1,28 @@
+# secrets
+.env
+.env.*
+!.env.example
+*.mnemonic
+*.skey
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
+# runtime state
+*.sqlite
+*.sqlite3
+*.db
+events.jsonl
+buyer/state/
+seller/state/
+
+# misc
+node_modules/
+.DS_Store
+.idea/
+.vscode/
