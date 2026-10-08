@@ -68,3 +68,31 @@ def test_load_profile_env(monkeypatch):
     monkeypatch.setenv("FIRM_PRICE_LOVELACE", "1234")
     profile = load_profile()
     assert (profile.name, profile.price_lovelace, profile.sloppy) == ("CheapBooks", 1234, True)
+
+
+def _variant(fixture_documents, old: str, new: str, encoding: str = "utf-8") -> bytes:
+    return fixture_documents[0].content.decode("utf-8").replace(old, new).encode(encoding)
+
+
+def test_parse_isdoc_variants(fixture_documents):
+    isdoc5 = _variant(fixture_documents, "namespace/2013", "namespace/invoice")
+    no_ns = _variant(fixture_documents, ' xmlns="http://isdoc.cz/namespace/2013"', "")
+    bom = b"\xef\xbb\xbf" + fixture_documents[0].content
+    for content in (isdoc5, no_ns, bom):
+        assert parse_isdoc(content).total == Decimal("1434.00")
+    cp1250 = _variant(fixture_documents, 'encoding="UTF-8"', 'encoding="windows-1250"', "cp1250")
+    assert parse_isdoc(cp1250).supplier_name == "ČEZ, a. s."
+    iban = _variant(fixture_documents, "<ID>123456789</ID><BankCode>0800</BankCode>",
+                    "<IBAN>CZ65 0800 0000 1920 0014 5399</IBAN>")
+    assert parse_isdoc(iban).bank_account == "CZ6508000000192000145399"
+
+
+def test_sloppy_skips_byte_duplicates_by_filename_order(fixture_documents):
+    from common.documents import Document
+
+    a, b, _ = fixture_documents
+    docs = [Document.from_bytes("07_duplicate.isdoc", a.content), b, a]
+    sloppy, _ = process(JobInput.build(docs), SLOPPY)
+    corrupted = sorted(i.filename for i in sloppy.invoices if i.lines[0].vat_rate == 15)
+    # Order is by filename, not by content: "07_…" sorts before "a_…".
+    assert corrupted == ["07_duplicate.isdoc", "a_mini.isdoc"]
