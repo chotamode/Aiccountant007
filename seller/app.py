@@ -76,15 +76,15 @@ class _Job(BaseModel):
 def _simulated_start(job: _Job, profile: FirmProfile, now_ms: int) -> StartJobResponse:
     return StartJobResponse(
         job_id=job.job_id,
-        blockchainIdentifier=job.blockchain_identifier,
-        agentIdentifier=os.environ.get("AGENT_IDENTIFIER") or f"SIMULATED-{profile.key}",
-        sellerVKey=os.environ.get("SELLER_VKEY") or "SIMULATED",
-        identifierFromPurchaser=job.purchaser_id,
+        blockchain_identifier=job.blockchain_identifier,
+        agent_identifier=os.environ.get("AGENT_IDENTIFIER") or f"SIMULATED-{profile.key}",
+        seller_vkey=os.environ.get("SELLER_VKEY") or "SIMULATED",
+        identifier_from_purchaser=job.purchaser_id,
         input_hash=masumi_input_hash(job.input_data, job.purchaser_id),
-        payByTime=now_ms + PAY_BY_MIN * MINUTE_MS,
-        submitResultTime=now_ms + SUBMIT_RESULT_MIN * MINUTE_MS,
-        unlockTime=now_ms + UNLOCK_MIN * MINUTE_MS,
-        externalDisputeUnlockTime=now_ms + EXTERNAL_DISPUTE_MIN * MINUTE_MS,
+        pay_by_time=str(now_ms + PAY_BY_MIN * MINUTE_MS),
+        submit_result_time=str(now_ms + SUBMIT_RESULT_MIN * MINUTE_MS),
+        unlock_time=str(now_ms + UNLOCK_MIN * MINUTE_MS),
+        external_dispute_unlock_time=str(now_ms + EXTERNAL_DISPUTE_MIN * MINUTE_MS),
     )
 
 
@@ -238,6 +238,56 @@ def create_app(profile: FirmProfile | None = None, payment_mode: str | None = No
         documents = [Document.from_bytes(EXAMPLE_FIXTURE.name, EXAMPLE_FIXTURE.read_bytes())]
         result, _ = process(JobInput.build(documents), profile, job_id="example")
         return {"result": JobResult.model_validate(result).to_result_string()}
+
+    @app.post("/dispute")
+    def dispute(body: dict[str, Any]) -> dict[str, Any]:
+        job_id = str(body.get("job_id", ""))
+        with lock:
+            job = jobs.get(job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail="job not found")
+
+        report = body.get("report", {})
+        checks = report.get("checks", []) if isinstance(report, dict) else []
+        blocking = [c for c in checks if isinstance(c, dict) and not c.get("passed") and c.get("severity") == "error"]
+
+        # Deterministic re-check: sloppy confirmed its own injected errors
+        authorized = profile.sloppy and len(blocking) > 0
+        if authorized:
+            if not simulated:
+                from seller import masumi_payment  # noqa: PLC0415
+                try:
+                    masumi_payment.authorize_refund(job.blockchain_identifier)
+                except Exception as exc:
+                    return {
+                        "job_id": job.job_id,
+                        "authorized": False,
+                        "message": f"failed to authorize refund on chain: {exc}",
+                        "simulated": False,
+                    }
+            refund_entry = LedgerEntry(
+                job_id=job.job_id,
+                kind=LedgerKind.COST,
+                amount=Decimal(profile.price_lovelace) / LOVELACE_PER_ADA,
+                unit="ADA",
+                description=f"refund for dispute on job {job.job_id}",
+                simulated=simulated,
+            )
+            with lock:
+                ledger.entries.append(refund_entry)
+            return {
+                "job_id": job.job_id,
+                "authorized": True,
+                "message": f"{profile.name} confirmed the errors and authorized the refund",
+                "simulated": simulated,
+            }
+
+        return {
+            "job_id": job.job_id,
+            "authorized": False,
+            "message": f"{profile.name} re-checked output and refused the refund",
+            "simulated": simulated,
+        }
 
     return app
 
