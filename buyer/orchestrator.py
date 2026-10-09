@@ -521,6 +521,9 @@ def build_buyer(state_dir: Path, pace: float, env: Mapping[str, str] | None = No
     bus = EventBus(state_dir / "events.jsonl")
     policy_env = dict(env)
     policy_env["POLICY_DB_PATH"] = str(state_dir / "policy.sqlite")
+    policy_env.setdefault("POLICY_MONTHLY_LIMIT_LOVELACE", "30000000")
+    policy_env.setdefault("POLICY_MAX_PER_TASK_LOVELACE", "10000000")
+    policy_env.setdefault("POLICY_HUMAN_APPROVAL_THRESHOLD_LOVELACE", "15000000")
     real_escrow: Escrow | None = None
     if env.get("PAYMENT_SERVICE_URL") and env.get("PAYMENT_API_KEY"):
         real_escrow = MasumiEscrow.from_env(env=env)

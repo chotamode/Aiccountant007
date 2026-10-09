@@ -1,0 +1,63 @@
+services:
+  seller-honest:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    container_name: aicc-seller-honest
+    command: ["python", "-m", "seller.app"]
+    ports:
+      - "${PORT_HONEST:-8003}:8001"
+    environment:
+      - FIRM_PROFILE=honest
+      - PORT=8001
+      - FIRM_PRICE_LOVELACE=5000000
+      - PAYMENT_MODE=${PAYMENT_MODE:-off}
+      - PAYMENT_SERVICE_URL=http://masumi-payment-service:3001/api/v1
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/availability')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  seller-sloppy:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    container_name: aicc-seller-sloppy
+    command: ["python", "-m", "seller.app"]
+    ports:
+      - "${PORT_SLOPPY:-8002}:8002"
+    environment:
+      - FIRM_PROFILE=sloppy
+      - PORT=8002
+      - FIRM_PRICE_LOVELACE=2000000
+      - PAYMENT_MODE=${PAYMENT_MODE:-off}
+      - PAYMENT_SERVICE_URL=http://masumi-payment-service:3001/api/v1
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/availability')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  buyer:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    container_name: aicc-buyer-dashboard
+    command: ["python", "-m", "buyer.dashboard.app"]
+    ports:
+      - "127.0.0.1:${PORT_DASHBOARD:-8004}:8000"
+    environment:
+      - PORT=8000
+      - EVENTS_PATH=/app/buyer/state/events.jsonl
+      - SELLER_URLS=http://seller-honest:8001,http://seller-sloppy:8002
+    volumes:
+      - buyer-state:/app/buyer/state
+    depends_on:
+      seller-honest:
+        condition: service_healthy
+      seller-sloppy:
+        condition: service_healthy
+
+volumes:
+  buyer-state:
