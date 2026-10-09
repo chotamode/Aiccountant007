@@ -119,6 +119,9 @@ Services:
 * 🎙️ **Voiceover Audio Tracks**: [`docs/video/voice/`](docs/video/voice/)
 * 📊 **Pitch Deck (PDF)**: [`docs/presentation/Aiccountant007_Presentation.pdf`](docs/presentation/Aiccountant007_Presentation.pdf) (10 slides, 1920x1080)
 * 🖥️ **Interactive Presentation (HTML)**: [`docs/presentation/index.html`](docs/presentation/index.html)
+* 📚 **Interactive Knowledge Base & Wiki (HTML)**: [`docs/wiki/index.html`](docs/wiki/index.html)
+* 📖 **GitHub Wiki Markdown Tree**: [`docs/wiki/`](docs/wiki/)
+* 📐 **Full Architectural Diagrams & Verification**: [`docs/DIAGRAMS_AND_VERIFICATION.md`](docs/DIAGRAMS_AND_VERIFICATION.md)
 * 📝 **Cardano Preprod Run Log**: [`docs/RUNLOG.md`](docs/RUNLOG.md)
 * 🏆 **Hackathon HQ Submission Text**: [`docs/SUBMISSION.md`](docs/SUBMISSION.md)
 
