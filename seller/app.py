@@ -93,8 +93,15 @@ def create_app(profile: FirmProfile | None = None, payment_mode: str | None = No
     mode = PaymentMode(payment_mode or os.environ.get("PAYMENT_MODE", PaymentMode.OFF))
     simulated = mode == PaymentMode.OFF
 
+    # Contract C1: In masumi mode, fail immediately on startup if config is incomplete
+    if not simulated:
+        from seller import masumi_payment
+
+        masumi_payment.validate_config()
+
     app = FastAPI(title=f"{profile.name} (MIP-003)")
     jobs: dict[str, _Job] = {}
+    disputes: dict[str, dict[str, Any]] = {}
     ledger = Ledger(seller_name=profile.name)
     lock = threading.Lock()
 
@@ -119,7 +126,6 @@ def create_app(profile: FirmProfile | None = None, payment_mode: str | None = No
             job.result, job.status = result.to_result_string(), JobStatus.COMPLETED
 
     def run_paid_job(job: _Job, job_input: JobInput) -> None:
-        # TODO(E3): interface from TASKS.md E3; module lands with feat/e3-seller-payment.
         from seller import masumi_payment
 
         try:
@@ -130,11 +136,36 @@ def create_app(profile: FirmProfile | None = None, payment_mode: str | None = No
             return
         with lock:
             job.status = JobStatus.RUNNING
-        run_job(job, job_input)
-        if job.status == JobStatus.COMPLETED and job.result is not None:
+
+        try:
+            result, costs = process(job_input, profile, job_id=job.job_id)
+        except Exception as exc:  # noqa: BLE001
+            with lock:
+                job.status, job.error = JobStatus.FAILED, str(exc)
+            return
+
+        result_str = result.to_result_string()
+        # Submit result on chain BEFORE exposing it in /status
+        try:
             masumi_payment.submit_result(
-                job.blockchain_identifier, job.purchaser_id, job.input_data, job.result
+                job.blockchain_identifier, job.purchaser_id, job.input_data, result_str
             )
+        except Exception as exc:  # noqa: BLE001
+            with lock:
+                job.status, job.error = JobStatus.FAILED, f"submit-result failed on chain: {exc}"
+            return
+
+        revenue = LedgerEntry(
+            job_id=job.job_id,
+            kind=LedgerKind.REVENUE,
+            amount=Decimal(profile.price_lovelace) / LOVELACE_PER_ADA,
+            unit="ADA",
+            description=f"escrow for {len(job_input.documents)} documents",
+            simulated=False,
+        )
+        with lock:
+            ledger.entries.extend([revenue, *(c.model_copy(update={"simulated": False}) for c in costs)])
+            job.result, job.status = result_str, JobStatus.COMPLETED
 
     @app.get("/availability")
     def availability() -> dict[str, Any]:
@@ -175,13 +206,16 @@ def create_app(profile: FirmProfile | None = None, payment_mode: str | None = No
             response = _simulated_start(job, profile, int(time.time() * 1000))
             run_job(job, job_input)
         else:
+            from seller import masumi_payment
+
+            agent_id = os.environ.get("AGENT_IDENTIFIER", "")
             try:
-                from seller import masumi_payment
-            except ImportError as exc:
-                raise HTTPException(status_code=501, detail="PAYMENT_MODE=masumi needs E3") from exc
-            response = masumi_payment.create_payment(
-                os.environ["AGENT_IDENTIFIER"], input_data, body.identifier_from_purchaser
-            )
+                response = masumi_payment.create_payment(
+                    agent_id, input_data, body.identifier_from_purchaser
+                )
+            except masumi_payment.MasumiPaymentError as exc:
+                raise HTTPException(status_code=502, detail=f"Payment service error: {exc}") from exc
+
             job = _Job(
                 job_id=job_id,
                 status=JobStatus.AWAITING_PAYMENT,
@@ -219,7 +253,9 @@ def create_app(profile: FirmProfile | None = None, payment_mode: str | None = No
             job = jobs.get(job_id)
             if job is None:
                 raise HTTPException(status_code=404, detail="job not found")
-            response = StatusResponse(job_id=job.job_id, status=job.status, result=job.result)
+            # Result must only be shown once job is completed (after submit_result on real node)
+            result_to_show = job.result if job.status == JobStatus.COMPLETED else None
+            response = StatusResponse(job_id=job.job_id, status=job.status, result=result_to_show)
             payload = response.model_dump()
             if job.error:
                 payload["error"] = job.error
@@ -247,48 +283,173 @@ def create_app(profile: FirmProfile | None = None, payment_mode: str | None = No
             job = jobs.get(job_id)
         if job is None:
             raise HTTPException(status_code=404, detail="job not found")
+        if job.status != JobStatus.COMPLETED:
+            raise HTTPException(status_code=409, detail="job not completed")
+
+        with lock:
+            if job.job_id in disputes:
+                return disputes[job.job_id]
 
         report = body.get("report", {})
+        if not isinstance(report, dict):
+            report = {}
+
+        # Validate package_sha256 if provided in report
+        try:
+            job_input = JobInput.from_input_data(job.input_data)
+            expected_pkg = job_input.package_sha256
+        except Exception:  # noqa: BLE001
+            expected_pkg = None
+
+        report_pkg = report.get("package_sha256")
+        if report_pkg and expected_pkg and report_pkg != expected_pkg:
+            return {
+                "authorized": False,
+                "pending": False,
+                "reason": f"report package_sha256 {report_pkg[:16]}… does not match job package {expected_pkg[:16]}…",
+                "job_id": job.job_id,
+                "message": "package hash mismatch",
+                "simulated": simulated,
+            }
+
         checks = report.get("checks", []) if isinstance(report, dict) else []
         blocking = [c for c in checks if isinstance(c, dict) and not c.get("passed") and c.get("severity") == "error"]
 
-        # Deterministic re-check: sloppy confirmed its own injected errors
-        authorized = profile.sloppy and len(blocking) > 0
-        if authorized:
-            if not simulated:
-                from seller import masumi_payment
-                try:
-                    masumi_payment.authorize_refund(job.blockchain_identifier)
-                except Exception as exc:  # noqa: BLE001
-                    return {
-                        "job_id": job.job_id,
-                        "authorized": False,
-                        "message": f"failed to authorize refund on chain: {exc}",
-                        "simulated": False,
-                    }
+        if not blocking:
+            resp = {
+                "authorized": False,
+                "pending": False,
+                "reason": "no blocking errors reported in verification report",
+                "job_id": job.job_id,
+                "message": "no blocking errors",
+                "simulated": simulated,
+            }
+            with lock:
+                disputes[job.job_id] = resp
+            return resp
+
+        # Deterministic re-check: sloppy confirmed its own injected errors, honest profile rejects
+        errors_confirmed = profile.sloppy and len(blocking) > 0
+        if not errors_confirmed:
+            resp = {
+                "authorized": False,
+                "pending": False,
+                "reason": f"{profile.name} re-checked output and refused the refund: claimed errors not confirmed",
+                "job_id": job.job_id,
+                "message": f"{profile.name} re-checked output and refused the refund",
+                "simulated": simulated,
+            }
+            with lock:
+                disputes[job.job_id] = resp
+            return resp
+
+        # Errors confirmed: authorize or set pending
+        if simulated:
             refund_entry = LedgerEntry(
                 job_id=job.job_id,
                 kind=LedgerKind.COST,
                 amount=Decimal(profile.price_lovelace) / LOVELACE_PER_ADA,
                 unit="ADA",
                 description=f"refund for dispute on job {job.job_id}",
-                simulated=simulated,
+                simulated=True,
             )
             with lock:
                 ledger.entries.append(refund_entry)
-            return {
-                "job_id": job.job_id,
-                "authorized": True,
-                "message": f"{profile.name} confirmed the errors and authorized the refund",
-                "simulated": simulated,
-            }
+                resp = {
+                    "authorized": True,
+                    "pending": False,
+                    "reason": f"{profile.name} confirmed the errors and authorized the refund",
+                    "job_id": job.job_id,
+                    "message": f"{profile.name} confirmed the errors and authorized the refund",
+                    "simulated": True,
+                }
+                disputes[job.job_id] = resp
+            return resp
 
-        return {
-            "job_id": job.job_id,
+        # Real Masumi mode
+        from seller import masumi_payment
+
+        try:
+            current_state = masumi_payment.payment_state(job.blockchain_identifier)
+        except Exception:  # noqa: BLE001
+            current_state = None
+
+        if current_state == "Disputed":
+            try:
+                masumi_payment.authorize_refund(job.blockchain_identifier)
+            except Exception as exc:  # noqa: BLE001
+                return {
+                    "authorized": False,
+                    "pending": False,
+                    "reason": f"failed to authorize refund on chain: {exc}",
+                    "job_id": job.job_id,
+                    "message": f"failed to authorize refund on chain: {exc}",
+                    "simulated": False,
+                }
+            refund_entry = LedgerEntry(
+                job_id=job.job_id,
+                kind=LedgerKind.COST,
+                amount=Decimal(profile.price_lovelace) / LOVELACE_PER_ADA,
+                unit="ADA",
+                description=f"refund for dispute on job {job.job_id}",
+                simulated=False,
+            )
+            with lock:
+                ledger.entries.append(refund_entry)
+                resp = {
+                    "authorized": True,
+                    "pending": False,
+                    "reason": f"{profile.name} confirmed the errors and authorized the refund on chain",
+                    "job_id": job.job_id,
+                    "message": f"{profile.name} confirmed the errors and authorized the refund on chain",
+                    "simulated": False,
+                }
+                disputes[job.job_id] = resp
+            return resp
+
+        # Not yet in Disputed on chain: spawn background worker to authorize when state becomes eligible
+        def _bg_authorize() -> None:
+            deadline = time.monotonic() + 600.0
+            while time.monotonic() < deadline:
+                try:
+                    st = masumi_payment.payment_state(job.blockchain_identifier)
+                    if st in ("Disputed", "RefundRequested"):
+                        masumi_payment.authorize_refund(job.blockchain_identifier)
+                        ref_entry = LedgerEntry(
+                            job_id=job.job_id,
+                            kind=LedgerKind.COST,
+                            amount=Decimal(profile.price_lovelace) / LOVELACE_PER_ADA,
+                            unit="ADA",
+                            description=f"refund for dispute on job {job.job_id}",
+                            simulated=False,
+                        )
+                        with lock:
+                            ledger.entries.append(ref_entry)
+                            disputes[job.job_id] = {
+                                "authorized": True,
+                                "pending": False,
+                                "reason": f"{profile.name} authorized the refund on chain",
+                                "job_id": job.job_id,
+                                "message": f"{profile.name} authorized the refund on chain",
+                                "simulated": False,
+                            }
+                        return
+                except Exception:  # noqa: BLE001, S110
+                    pass
+                time.sleep(3.0)
+
+        threading.Thread(target=_bg_authorize, daemon=True).start()
+        resp = {
             "authorized": False,
-            "message": f"{profile.name} re-checked output and refused the refund",
-            "simulated": simulated,
+            "pending": True,
+            "reason": f"{profile.name} confirmed errors, authorization pending on-chain dispute state",
+            "job_id": job.job_id,
+            "message": f"{profile.name} confirmed errors, authorization pending on-chain dispute state",
+            "simulated": False,
         }
+        with lock:
+            disputes[job.job_id] = resp
+        return resp
 
     return app
 

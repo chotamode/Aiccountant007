@@ -29,7 +29,7 @@ git config user.email "bot@aiccountant007.ai"
 git add .
 git commit -m "docs: sync wiki knowledge base"
 
-echo "==> Pushing to $WIKI_REMOTE..."
+echo "==> Pushing to GitHub Wiki repository (Aiccountant007.wiki.git)..."
 if git push -f "$WIKI_REMOTE" master:master 2>/dev/null || git push -f "$WIKI_REMOTE" main:main 2>/dev/null; then
   echo "==> Wiki successfully deployed to GitHub!"
 else

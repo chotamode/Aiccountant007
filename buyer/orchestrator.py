@@ -92,6 +92,11 @@ class Buyer:
     def __post_init__(self) -> None:
         self._simulated_escrow = SimulatedEscrow()
 
+    @property
+    def real_mode(self) -> bool:
+        """Contract C4: True when connected to a real Masumi Payment Service node."""
+        return self.real_escrow is not None and not self.real_escrow.simulated
+
     # --- event feed ---
 
     def emit(
@@ -222,7 +227,18 @@ class Buyer:
         job_result = self._wait_for_result(deal_id, offer, adapter, start)
         if job_result is None:
             self.reputation.record(offer.seller.seller_id, Outcome.FAILED, deal_id)
-            return result.model_copy(update={"detail": "seller delivered no result"})
+            try:
+                requested = escrow.request_refund(start.blockchain_identifier)
+                self.emit(
+                    EventType.REFUND_REQUESTED,
+                    f"{offer.seller.name} delivered no result; refund requested from escrow before unlockTime",
+                    deal_id=deal_id,
+                    simulated=escrow.simulated,
+                    tx_url=requested.tx_url,
+                )
+            except PurchaseError as exc:
+                self.emit(EventType.ERROR, f"Refund request failed after non-delivery: {exc}", deal_id=deal_id)
+            return result.model_copy(update={"status": DealStatus.REFUND_PENDING, "detail": "seller delivered no result"})
         submitted = self._safe_state(escrow, start.blockchain_identifier)
         self.emit(
             EventType.RESULT_SUBMITTED,
@@ -423,6 +439,16 @@ class Buyer:
             simulated=escrow.simulated,
             tx_url=requested.tx_url,
         )
+        if not escrow.simulated:
+            try:
+                escrow.wait_state(
+                    blockchain_id,
+                    {OnChainState.DISPUTED, OnChainState.REFUND_REQUESTED},
+                    timeout=self.lock_timeout,
+                )
+            except PurchaseError as exc:
+                self.emit(EventType.ERROR, f"Waiting for on-chain dispute state failed: {exc}", deal_id=deal_id)
+
         try:
             answer = adapter.dispute(result.job_id or "", report)
         except SellerAdapterError as exc:
@@ -432,17 +458,23 @@ class Buyer:
                 deal_id=deal_id,
             )
             return result.model_copy(update={"status": DealStatus.REFUND_PENDING, "detail": str(exc)})
-        if not answer.authorized:
+        if not (answer.authorized or answer.pending):
             self.emit(
                 EventType.ERROR,
                 f"{offer.seller.name} refused the refund: dispute goes to Masumi admins (manual, not automated)",
                 deal_id=deal_id,
                 actor=Actor.SELLER,
             )
-            return result.model_copy(update={"status": DealStatus.REFUND_PENDING, "detail": answer.message})
+            return result.model_copy(update={"status": DealStatus.REFUND_PENDING, "detail": answer.message or answer.reason})
+
+        msg = (
+            f"{offer.seller.name} re-checked its own output, confirmed the errors and authorized the refund"
+            if answer.authorized
+            else f"{offer.seller.name} confirmed the errors; refund authorization pending on-chain dispute state"
+        )
         self.emit(
             EventType.REFUND_AUTHORIZED,
-            f"{offer.seller.name} re-checked its own output, confirmed the errors and authorized the refund",
+            msg,
             deal_id=deal_id,
             actor=Actor.SELLER,
             simulated=answer.simulated,
@@ -547,7 +579,7 @@ def build_buyer(state_dir: Path, pace: float, env: Mapping[str, str] | None = No
     policy_env.setdefault("POLICY_HUMAN_APPROVAL_THRESHOLD_LOVELACE", "15000000")
     real_escrow: Escrow | None = None
     if env.get("PAYMENT_SERVICE_URL") and env.get("PAYMENT_API_KEY"):
-        real_escrow = MasumiEscrow.from_env(env=env)
+        real_escrow = MasumiEscrow.from_env(env=env, publish=bus.publish)
     urls = [u.strip() for u in env.get("SELLER_URLS", "").split(",") if u.strip()]
     return Buyer(
         bus=bus,

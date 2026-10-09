@@ -14,6 +14,7 @@ Serves:
 
 from __future__ import annotations
 
+import hmac
 import os
 import subprocess
 import sys
@@ -124,13 +125,22 @@ def ensure_seller_services() -> None:
         time.sleep(0.1)
 
 
-def _fresh_run_dir(state_dir: Path) -> Path:
-    """Create an isolated directory for one scenario run and drop older runs.
+def is_real_mode() -> bool:
+    """Contract C4: True when connected to real Masumi Payment Service node."""
+    return bool(os.environ.get("PAYMENT_SERVICE_URL") and os.environ.get("PAYMENT_API_KEY"))
 
-    Wallet policy (duplicate ledger, monthly spend) and reputation are SQLite files.
-    Reusing them across button clicks makes every second run end in duplicate_blocked,
-    so each run gets a clean copy; the shared event feed is untouched.
+
+def _run_dir(state_dir: Path, real: bool) -> Path:
+    """Create directory for scenario run.
+    
+    In real mode (Contract C5), policy.sqlite is persistent and NOT wiped on every click.
+    In simulation mode, each run gets an isolated clean directory.
     """
+    if real:
+        real_dir = state_dir / "real_state"
+        real_dir.mkdir(parents=True, exist_ok=True)
+        return real_dir
+
     import shutil
     import uuid
 
@@ -159,7 +169,8 @@ def execute_scenario_background(scenario: str, state_dir: Path, bus: EventBus | 
             env["SELLER_URLS"] = f"{sloppy_url},{honest_url}"
             invoices_dir = REPO_ROOT / "data" / "invoices"
 
-            buyer = build_buyer(_fresh_run_dir(state_dir), pace=0.08, env=env)
+            real = is_real_mode()
+            buyer = build_buyer(_run_dir(state_dir, real), pace=0.08, env=env)
             # Publish into the feed the dashboard is streaming, not the per-run copy.
             buyer = dataclasses.replace(buyer, bus=bus or EventBus(state_dir / "events.jsonl"))
             docs = {d.filename[:2]: d for d in load_documents(invoices_dir, "*.isdoc")}
@@ -252,8 +263,28 @@ def create_dashboard_app(bus: EventBus | None = None) -> FastAPI:
             },
         )
 
+    def _verify_admin_token(request: Request) -> None:
+        """Contract C5: In real mode, require valid X-Admin-Token header."""
+        if not is_real_mode():
+            return
+        expected = os.environ.get("DASHBOARD_ADMIN_TOKEN", "").strip()
+        if not expected:
+            raise HTTPException(status_code=403, detail="DASHBOARD_ADMIN_TOKEN not set on server")
+        provided = request.headers.get("X-Admin-Token", "").strip()
+        if not hmac.compare_digest(provided.encode("utf-8"), expected.encode("utf-8")):
+            raise HTTPException(status_code=403, detail="Forbidden: invalid admin token")
+
+    @app.get("/api/mode")
+    def get_mode() -> dict[str, Any]:
+        """Contract C5: report mode and network."""
+        return {
+            "real": is_real_mode(),
+            "network": os.environ.get("NETWORK", "Preprod"),
+        }
+
     @app.post("/approve/{deal_id}")
-    def approve(deal_id: str) -> dict[str, Any]:
+    def approve(deal_id: str, request: Request) -> dict[str, Any]:
+        _verify_admin_token(request)
         event = Event(
             actor=Actor.BUYER,
             type=EventType.HUMAN_APPROVED,
@@ -264,8 +295,16 @@ def create_dashboard_app(bus: EventBus | None = None) -> FastAPI:
         return {"status": "ok", "deal_id": deal_id}
 
     @app.post("/api/run-scenario")
-    def run_scenario(scenario: str = Query("demo")) -> dict[str, Any]:
-        """Trigger an audit scenario in a non-blocking background thread."""
+    def run_scenario(request: Request, scenario: str = Query("demo")) -> dict[str, Any]:
+        """Trigger an audit scenario in a non-blocking background thread.
+        
+        Contract C5: protected by X-Admin-Token in real mode.
+        Returns 409 if a scenario is already in progress.
+        """
+        _verify_admin_token(request)
+        if _run_lock.locked():
+            raise HTTPException(status_code=409, detail="Another scenario is currently running")
+
         thread = threading.Thread(
             target=execute_scenario_background,
             args=(scenario, state_dir, bus),

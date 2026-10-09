@@ -562,6 +562,10 @@
     </nav>
 
     <div class="controls-group">
+      <div class="status-pill" id="mode-status">
+        <span class="status-dot"></span>
+        <span id="mode-text">Checking Mode...</span>
+      </div>
       <div class="status-pill connected" id="connection-status">
         <span class="status-dot"></span>
         <span id="conn-text">Live Connected</span>
@@ -679,6 +683,39 @@
     let currentFilter = 'all';
     let activeApprovalDealId = null;
 
+    function escapeHtml(str) {
+      if (str == null) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    async function checkMode() {
+      try {
+        const resp = await fetch("/api/mode");
+        const mode = await resp.json();
+        const modePill = document.getElementById("mode-status");
+        const modeText = document.getElementById("mode-text");
+        if (mode.real) {
+          modePill.className = "status-pill connected";
+          modeText.textContent = `LIVE ESCROW (${mode.network || "Preprod"})`;
+        } else {
+          modePill.className = "status-pill";
+          modeText.textContent = "SIMULATED";
+        }
+      } catch (err) {
+        console.error("Mode check error:", err);
+      }
+    }
+
+    function getAdminHeaders() {
+      const token = localStorage.getItem("admin_token") || "";
+      return token ? { "X-Admin-Token": token } : {};
+    }
+
     async function runScenario(scenarioType, evt) {
       const btn = (evt && evt.currentTarget) ? evt.currentTarget : (event ? event.currentTarget : document.getElementById("btn-run-demo"));
       const origText = btn ? btn.innerText : "";
@@ -689,8 +726,18 @@
 
       try {
         const resp = await fetch(`/api/run-scenario?scenario=${encodeURIComponent(scenarioType)}`, {
-          method: "POST"
+          method: "POST",
+          headers: getAdminHeaders()
         });
+        if (resp.status === 409) {
+          alert("Another audit scenario is already running. Please wait for it to complete.");
+        } else if (resp.status === 403) {
+          const tok = prompt("Scenario execution is protected by DASHBOARD_ADMIN_TOKEN in real mode. Enter token:");
+          if (tok) {
+            localStorage.setItem("admin_token", tok.trim());
+            return runScenario(scenarioType, evt);
+          }
+        }
         const res = await resp.json();
         console.log("Scenario dispatched:", res);
       } catch (err) {
@@ -714,7 +761,17 @@
     async function approveCurrentDeal() {
       if (!activeApprovalDealId) return;
       try {
-        await fetch(`/approve/${encodeURIComponent(activeApprovalDealId)}`, { method: "POST" });
+        const resp = await fetch(`/approve/${encodeURIComponent(activeApprovalDealId)}`, {
+          method: "POST",
+          headers: getAdminHeaders()
+        });
+        if (resp.status === 403) {
+          const tok = prompt("Human approval is protected by DASHBOARD_ADMIN_TOKEN in real mode. Enter token:");
+          if (tok) {
+            localStorage.setItem("admin_token", tok.trim());
+            return approveCurrentDeal();
+          }
+        }
         approvalBanner.style.display = "none";
         activeApprovalDealId = null;
       } catch (e) {
@@ -781,58 +838,108 @@
       // Check human approval
       if (evType === "human_approval_required") {
         activeApprovalDealId = dealId;
-        document.getElementById("approval-title").innerText = `Deal ${dealId}: Human Approval Required`;
-        document.getElementById("approval-sub").innerText = ev.msg;
+        document.getElementById("approval-title").textContent = `Deal ${dealId}: Human Approval Required`;
+        document.getElementById("approval-sub").textContent = ev.msg || "";
         approvalBanner.style.display = "flex";
       }
 
-      // Render Event Item
+      // Render Event Item safely (No raw innerHTML for untrusted event message / attributes)
       const item = document.createElement("div");
-      item.className = `event-item type-${evType}`;
+      item.className = `event-item type-${escapeHtml(evType)}`;
       item.setAttribute("data-type", evType);
 
-      let badgesHtml = `<span class="actor-pill ${actor}">${actor}</span>`;
-      badgesHtml += `<span class="type-pill">${ev.type || ""}</span>`;
+      // Top bar
+      const topDiv = document.createElement("div");
+      topDiv.className = "event-top";
+      const tagsDiv = document.createElement("div");
+      tagsDiv.className = "event-tags";
+
+      const actorPill = document.createElement("span");
+      actorPill.className = `actor-pill ${escapeHtml(actor)}`;
+      actorPill.textContent = actor;
+      tagsDiv.appendChild(actorPill);
+
+      const typePill = document.createElement("span");
+      typePill.className = "type-pill";
+      typePill.textContent = ev.type || "";
+      tagsDiv.appendChild(typePill);
+
       if (ev.simulated) {
-        badgesHtml += `<span class="badge-simulated">SIMULATED</span>`;
+        const simBadge = document.createElement("span");
+        simBadge.className = "badge-simulated";
+        simBadge.textContent = "SIMULATED";
+        tagsDiv.appendChild(simBadge);
       }
 
-      let footerHtml = "";
-      if (dealId || ev.tx_url) {
-        footerHtml = `
-          <div class="event-bottom">
-            <span>${dealId ? `Deal: <code>${dealId}</code>` : ''}</span>
-            ${ev.tx_url ? `<a href="${ev.tx_url}" target="_blank" rel="noreferrer" class="tx-link">Explorer tx ↗</a>` : ''}
-          </div>
-        `;
-      }
+      const timeDiv = document.createElement("div");
+      timeDiv.className = "event-time";
+      timeDiv.textContent = timestamp;
 
-      let aiHtml = "";
+      topDiv.appendChild(tagsDiv);
+      topDiv.appendChild(timeDiv);
+      item.appendChild(topDiv);
+
+      // Event message (strictly textContent, never innerHTML)
+      const msgDiv = document.createElement("div");
+      msgDiv.className = "event-msg";
+      msgDiv.textContent = ev.msg || "";
+      item.appendChild(msgDiv);
+
+      // AI Reasoning box
       if (ev.data && ev.data.ai) {
         const ai = ev.data.ai;
         const text = ai.reasoning || ai.threat || "";
         if (text) {
-          aiHtml = `
-            <div style="margin-top: 8px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 0.8125rem;">
-              <div style="font-weight: 600; color: var(--primary); display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-                <span>🧠 AI Forensic Intelligence (${ai.verdict || (ai.threat_detected ? 'ATTACK BLOCKED' : 'APPROVED')})</span>
-                <span style="font-size: 0.6875rem; font-family: var(--font-mono); color: var(--ink-faint);">${ai.model || 'deepseek-chat'}</span>
-              </div>
-              <div style="color: var(--ink-muted); line-height: 1.45;">${text}</div>
-            </div>
-          `;
+          const aiBox = document.createElement("div");
+          aiBox.style.cssText = "margin-top: 8px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 0.8125rem;";
+
+          const aiHeader = document.createElement("div");
+          aiHeader.style.cssText = "font-weight: 600; color: var(--primary); display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;";
+          const aiTitle = document.createElement("span");
+          aiTitle.textContent = `🧠 AI Forensic Intelligence (${ai.verdict || (ai.threat_detected ? 'ATTACK BLOCKED' : 'APPROVED')})`;
+          const aiModel = document.createElement("span");
+          aiModel.style.cssText = "font-size: 0.6875rem; font-family: var(--font-mono); color: var(--ink-faint);";
+          aiModel.textContent = ai.model || 'deepseek-chat';
+
+          aiHeader.appendChild(aiTitle);
+          aiHeader.appendChild(aiModel);
+
+          const aiBody = document.createElement("div");
+          aiBody.style.cssText = "color: var(--ink-muted); line-height: 1.45;";
+          aiBody.textContent = text;
+
+          aiBox.appendChild(aiHeader);
+          aiBox.appendChild(aiBody);
+          item.appendChild(aiBox);
         }
       }
 
-      item.innerHTML = `
-        <div class="event-top">
-          <div class="event-tags">${badgesHtml}</div>
-          <div class="event-time">${timestamp}</div>
-        </div>
-        <div class="event-msg">${ev.msg || ""}</div>
-        ${aiHtml}
-        ${footerHtml}
-      `;
+      // Footer with deal ID and tx url
+      if (dealId || ev.tx_url) {
+        const footerDiv = document.createElement("div");
+        footerDiv.className = "event-bottom";
+
+        if (dealId) {
+          const dealSpan = document.createElement("span");
+          dealSpan.textContent = "Deal: ";
+          const dealCode = document.createElement("code");
+          dealCode.textContent = dealId;
+          dealSpan.appendChild(dealCode);
+          footerDiv.appendChild(dealSpan);
+        }
+
+        if (ev.tx_url) {
+          const txLink = document.createElement("a");
+          txLink.href = ev.tx_url;
+          txLink.target = "_blank";
+          txLink.rel = "noreferrer";
+          txLink.className = "tx-link";
+          txLink.textContent = "Explorer tx ↗";
+          footerDiv.appendChild(txLink);
+        }
+
+        item.appendChild(footerDiv);
+      }
 
       eventsFeed.insertBefore(item, eventsFeed.firstChild);
       filterEvents();
@@ -846,17 +953,39 @@
       for (const [id, deal] of dealsMap.entries()) {
         const card = document.createElement("div");
         card.className = "deal-card";
-        card.innerHTML = `
-          <div class="deal-card-top">
-            <span class="deal-id">${id}</span>
-            <span class="deal-badge ${deal.status}">${deal.status}</span>
-          </div>
-          <div class="deal-title">${deal.title}</div>
-          <div class="deal-meta-row">
-            <span>Events: ${deal.events.length}</span>
-            <span>${deal.simulated ? 'SIMULATED' : 'CARDANO'}</span>
-          </div>
-        `;
+
+        const cardTop = document.createElement("div");
+        cardTop.className = "deal-card-top";
+
+        const idSpan = document.createElement("span");
+        idSpan.className = "deal-id";
+        idSpan.textContent = id;
+
+        const badgeSpan = document.createElement("span");
+        badgeSpan.className = `deal-badge ${escapeHtml(deal.status)}`;
+        badgeSpan.textContent = deal.status;
+
+        cardTop.appendChild(idSpan);
+        cardTop.appendChild(badgeSpan);
+        card.appendChild(cardTop);
+
+        const titleDiv = document.createElement("div");
+        titleDiv.className = "deal-title";
+        titleDiv.textContent = deal.title || "";
+        card.appendChild(titleDiv);
+
+        const metaRow = document.createElement("div");
+        metaRow.className = "deal-meta-row";
+
+        const evCount = document.createElement("span");
+        evCount.textContent = `Events: ${deal.events.length}`;
+        const modeSpan = document.createElement("span");
+        modeSpan.textContent = deal.simulated ? 'SIMULATED' : 'CARDANO';
+
+        metaRow.appendChild(evCount);
+        metaRow.appendChild(modeSpan);
+        card.appendChild(metaRow);
+
         dealsList.appendChild(card);
       }
     }

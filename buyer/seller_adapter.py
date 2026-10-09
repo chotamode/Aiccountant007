@@ -35,10 +35,18 @@ class SellerAvailability(BaseModel):
 
 
 class DisputeResponse(BaseModel):
-    job_id: str
-    authorized: bool
+    job_id: str = ""
+    authorized: bool = False
+    pending: bool = False
+    reason: str = ""
     message: str = ""
     simulated: bool = False
+
+    def model_post_init(self, context: object, /) -> None:
+        if not self.message and self.reason:
+            self.message = self.reason
+        elif not self.reason and self.message:
+            self.reason = self.message
 
 
 class SellerAdapter(Protocol):

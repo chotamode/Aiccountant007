@@ -69,6 +69,78 @@ def test_example_output():
     JobResult.from_result_string(client.get("/example_output.json").json()["result"])
 
 
+def test_contract_c1_masumi_startup_validation(monkeypatch):
+    monkeypatch.delenv("PAYMENT_SERVICE_URL", raising=False)
+    monkeypatch.delenv("PAYMENT_API_KEY", raising=False)
+    monkeypatch.delenv("AGENT_IDENTIFIER", raising=False)
+
+    from seller.masumi_payment import MasumiPaymentError
+
+    with pytest.raises(MasumiPaymentError, match="PAYMENT_SERVICE_URL"):
+        create_app(HONEST, payment_mode="masumi")
+
+    monkeypatch.setenv("PAYMENT_SERVICE_URL", "http://test-node:3001")
+    monkeypatch.setenv("PAYMENT_API_KEY", "test-k")
+    monkeypatch.setenv("AGENT_IDENTIFIER", "test-agent-id")
+
+    # Now all required variables are set, create_app succeeds
+    app = create_app(HONEST, payment_mode="masumi")
+    assert app is not None
+
+
+def test_contract_c2_dispute_errors_and_idempotency(fixture_documents):
+    client = TestClient(create_app(SLOPPY, payment_mode="off"))
+    job = JobInput.build(fixture_documents)
+    r = client.post("/start_job", json={"input_data": job.to_input_data()})
+    assert r.status_code == 200
+    job_id = r.json()["job_id"]
+
+    # 404 on missing job
+    assert client.post("/dispute", json={"job_id": "missing"}).status_code == 404
+
+    # Mismatched package_sha256
+    bad_report = {
+        "package_sha256": "wrong" * 12,
+        "checks": [{"severity": "error", "passed": False}],
+    }
+    r_bad = client.post("/dispute", json={"job_id": job_id, "report": bad_report}).json()
+    assert r_bad["authorized"] is False
+    assert "package_sha256" in r_bad["reason"]
+
+    # Valid report with blocking errors on SLOPPY profile -> authorized
+    good_report = {
+        "package_sha256": job.package_sha256,
+        "checks": [{"severity": "error", "passed": False, "message": "tax error"}],
+    }
+    r_good = client.post("/dispute", json={"job_id": job_id, "report": good_report}).json()
+    assert r_good["authorized"] is True
+    assert r_good["pending"] is False
+    assert "confirmed" in r_good["reason"]
+
+    # Idempotency: second call returns same result without double refunding ledger
+    r_second = client.post("/dispute", json={"job_id": job_id, "report": good_report}).json()
+    assert r_second["authorized"] is True
+    ledger = client.get("/ledger").json()
+    refund_costs = [e for e in ledger["entries"] if e["kind"] == "cost" and "refund" in e["description"]]
+    assert len(refund_costs) == 1  # exactly one refund entry booked
+
+
+def test_contract_c2_honest_firm_refuses_dispute(fixture_documents):
+    client = TestClient(create_app(HONEST, payment_mode="off"))
+    job = JobInput.build(fixture_documents)
+    r = client.post("/start_job", json={"input_data": job.to_input_data()})
+    job_id = r.json()["job_id"]
+
+    report = {
+        "package_sha256": job.package_sha256,
+        "checks": [{"severity": "error", "passed": False}],
+    }
+    r_disp = client.post("/dispute", json={"job_id": job_id, "report": report}).json()
+    assert r_disp["authorized"] is False
+    assert r_disp["pending"] is False
+    assert "refused" in r_disp["reason"]
+
+
 SECRET = re.compile(r"(?i:mnemonic|api[_-]?key|admin[_-]?key|token)[ \t]*[=:][ \t]*['\"]?(?=[A-Z_]*[a-z0-9])[A-Za-z0-9_\-]{16,}")
 
 

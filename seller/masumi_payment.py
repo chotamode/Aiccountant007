@@ -97,6 +97,24 @@ def create_payment(agent_identifier: str, input_data: Mapping[str, str], purchas
     return StartJobResponse.model_validate(raw)
 
 
+def validate_config() -> None:
+    """Validate that required environment variables are set for PAYMENT_MODE=masumi (Contract C1)."""
+    url = os.environ.get("PAYMENT_SERVICE_URL", "").strip()
+    key = os.environ.get("PAYMENT_API_KEY", "").strip()
+    agent_id = os.environ.get("AGENT_IDENTIFIER", "").strip()
+    missing: list[str] = []
+    if not url:
+        missing.append("PAYMENT_SERVICE_URL")
+    if not key:
+        missing.append("PAYMENT_API_KEY")
+    if not agent_id:
+        missing.append("AGENT_IDENTIFIER")
+    if missing:
+        raise MasumiPaymentError(
+            f"Missing required Masumi configuration for PAYMENT_MODE=masumi: {', '.join(missing)}"
+        )
+
+
 def payment_state(blockchain_id: str) -> str | None:
     """On-chain state of the escrow as our node sees it, None while nothing is on chain."""
     data = _post("/payment/resolve-blockchain-identifier", {"network": _network(), "blockchainIdentifier": blockchain_id})
@@ -104,34 +122,70 @@ def payment_state(blockchain_id: str) -> str | None:
     return state if isinstance(state, str) else None
 
 
-def wait_funds_locked(blockchain_id: str, timeout: float = 900.0, poll_interval: float = 10.0) -> None:
-    """Block until the buyer's funds are locked. Work must not start before that."""
+def wait_funds_locked(blockchain_id: str, timeout: float = 900.0, poll_interval: float = 5.0) -> None:
+    """Block until the buyer's funds are locked. Work must not start before that.
+    
+    Retries across transient network errors until the timeout deadline.
+    """
     deadline = time.monotonic() + timeout
+    last_err: Exception | None = None
     while True:
-        state = payment_state(blockchain_id)
-        if state in PAID_STATES:
-            return
+        try:
+            state = payment_state(blockchain_id)
+            if state in PAID_STATES:
+                return
+        except MasumiPaymentError as exc:
+            last_err = exc
         if time.monotonic() >= deadline:
-            raise MasumiPaymentError(f"funds not locked after {timeout:.0f}s (state: {state or 'not on chain'})")
+            detail = f", last error: {last_err}" if last_err else ""
+            raise MasumiPaymentError(f"funds not locked after {timeout:.0f}s{detail}")
         time.sleep(poll_interval)
 
 
-def submit_result(blockchain_id: str, purchaser_id: str, input_data: Mapping[str, str], result_str: str) -> None:
-    """Put the hash of the delivered result on chain (MIP-004 output hash, 64 hex)."""
+def submit_result(
+    blockchain_id: str,
+    purchaser_id: str,
+    input_data: Mapping[str, str],
+    result_str: str,
+    max_retries: int = 10,
+    retry_interval: float = 3.0,
+) -> None:
+    """Put the hash of the delivered result on chain (MIP-004 output hash, 64 hex).
+
+    Retries on transient errors until submitResultTime or max_retries.
+    """
     del input_data  # the input is already bound by inputHash; kept for the E3 signature
-    _post(
-        "/payment/submit-result",
-        {
-            "network": _network(),
-            "blockchainIdentifier": blockchain_id,
-            "submitResultHash": masumi_output_hash(result_str, purchaser_id),
-        },
-    )
+    output_hash = masumi_output_hash(result_str, purchaser_id)
+    body = {
+        "network": _network(),
+        "blockchainIdentifier": blockchain_id,
+        "submitResultHash": output_hash,
+    }
+    last_exc: Exception | None = None
+    for attempt in range(max_retries):
+        try:
+            _post("/payment/submit-result", body)
+            return
+        except MasumiPaymentError as exc:
+            last_exc = exc
+            if attempt < max_retries - 1:
+                time.sleep(retry_interval)
+    raise MasumiPaymentError(f"failed to submit result after {max_retries} attempts: {last_exc}") from last_exc
 
 
-def authorize_refund(blockchain_id: str) -> None:
-    """Agree to give the money back. Called only from /dispute after the errors were re-checked."""
-    _post("/payment/authorize-refund", {"network": _network(), "blockchainIdentifier": blockchain_id})
+def authorize_refund(blockchain_id: str, max_retries: int = 5, retry_interval: float = 2.0) -> None:
+    """Agree to give the money back. Called from /dispute after the errors were re-checked."""
+    body = {"network": _network(), "blockchainIdentifier": blockchain_id}
+    last_exc: Exception | None = None
+    for attempt in range(max_retries):
+        try:
+            _post("/payment/authorize-refund", body)
+            return
+        except MasumiPaymentError as exc:
+            last_exc = exc
+            if attempt < max_retries - 1:
+                time.sleep(retry_interval)
+    raise MasumiPaymentError(f"failed to authorize refund after {max_retries} attempts: {last_exc}") from last_exc
 
 
 def _network() -> str:

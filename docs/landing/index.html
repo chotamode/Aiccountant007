@@ -855,9 +855,10 @@
   <section class="section" id="sandbox">
     <div class="wrap">
       <div class="section-header">
+        <div style="display: inline-block; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; padding: 4px 10px; border-radius: 999px; background: rgba(245, 158, 11, 0.12); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); margin-bottom: 12px; text-transform: uppercase;">Simulated Test Harness Traces</div>
         <h2 class="section-title">Interactive Forensic Sandbox</h2>
         <p class="section-lead">
-          Test real audit scenarios below to inspect how the buyer orchestrator, verification engine, and escrow policies react.
+          Inspect deterministic verification, Bayesian reputation updates, and simulated escrow state transitions from our automated test harness (<code>PAYMENT_MODE=off</code>).
         </p>
       </div>
 
@@ -929,6 +930,7 @@
           text: "STATUS: ESCROW_SETTLED · Payment released on Cardano Preprod. Work accepted into company financial ledger."
         },
         proof: `{
+  "mode": "SIMULATED",
   "deal_id": "dl_a910f2c8",
   "document_count": 4,
   "checks": {
@@ -938,7 +940,7 @@
     "prompt_injection_sanitization": "CLEAN"
   },
   "escrow_state": "RELEASED",
-  "tx_url": "https://preprod.cardanoscan.io/transaction/884e912f..."
+  "blockchain_identifier": "SIMULATED-a910f2c8"
 }`
       },
       sloppy: {
@@ -956,6 +958,7 @@
           text: "STATUS: DISPUTE_SLASHED · Cryptographic dispute filed. Escrow refunded to Buyer. Documents forwarded to alternative provider."
         },
         proof: `{
+  "mode": "SIMULATED",
   "deal_id": "dl_b482e171",
   "dispute_reason": "VAT_CALCULATION_ERROR",
   "failures": [
@@ -968,7 +971,7 @@
     }
   ],
   "escrow_action": "AUTOMATED_REFUND_CLAIMED",
-  "tx_refund_url": "https://preprod.cardanoscan.io/transaction/f12e8419..."
+  "blockchain_identifier": "SIMULATED-b482e171"
 }`
       },
       injection: {

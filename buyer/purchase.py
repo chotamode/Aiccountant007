@@ -170,6 +170,10 @@ class MasumiEscrow:
         return cls(url, key, network=env.get("NETWORK", "Preprod"), publish=publish)
 
     def lock(self, start: StartJobResponse, input_data: Mapping[str, str], amounts: Sequence[Price]) -> str:
+        if is_simulated(start):
+            raise PurchaseError(
+                f"refusing to pay simulated identifier {start.blockchain_identifier} in real escrow mode"
+            )
         check_input_hash(start, input_data)  # before any money call
         body: dict[str, object] = {
             "blockchainIdentifier": start.blockchain_identifier,
@@ -213,16 +217,21 @@ class MasumiEscrow:
 
     def wait_state(self, blockchain_id: str, states: Collection[str], timeout: float = 600.0) -> EscrowState:
         deadline = time.monotonic() + timeout
+        last_err: Exception | None = None
         while True:
-            current = self.state(blockchain_id)
-            if current.on_chain_state in states:
-                return current
-            if current.on_chain_state == OnChainState.FUNDS_OR_DATUM_INVALID:
-                raise PurchaseError(f"escrow for {blockchain_id[:24]}… is invalid on chain")
+            try:
+                current = self.state(blockchain_id)
+                if current.on_chain_state in states:
+                    return current
+                if current.on_chain_state == OnChainState.FUNDS_OR_DATUM_INVALID:
+                    raise PurchaseError(f"escrow for {blockchain_id[:24]}… is invalid on chain")
+            except PurchaseError as exc:
+                last_err = exc
             if time.monotonic() >= deadline:
                 wanted = ", ".join(sorted(states))
+                detail = f", last error: {last_err}" if last_err else ""
                 raise PurchaseError(
-                    f"escrow is {current.on_chain_state or 'not on chain yet'} after {timeout:.0f}s, wanted {wanted}"
+                    f"escrow did not reach {wanted} within {timeout:.0f}s{detail}"
                 )
             time.sleep(self._poll_interval)
 
@@ -262,3 +271,41 @@ def _amount(price: Price) -> dict[str, str]:
 
 def _total(amounts: Sequence[Price]) -> str:
     return " + ".join(str(price) for price in amounts) or "nothing"
+
+
+def main() -> None:
+    import argparse
+    import sys
+
+    parser = argparse.ArgumentParser(description="Masumi buyer purchase smoke test")
+    parser.add_argument("--smoke", action="store_true", help="Check node connectivity and health")
+    parser.add_argument("--confirm", action="store_true", help="Confirm real transaction execution")
+    args = parser.parse_args()
+
+    url = os.environ.get("PAYMENT_SERVICE_URL", "")
+    key = os.environ.get("PAYMENT_API_KEY", "")
+    network = os.environ.get("NETWORK", "Preprod")
+
+    if not url or not key:
+        print(f"[!] Real escrow not configured: PAYMENT_SERVICE_URL={'set' if url else 'unset'}, PAYMENT_API_KEY={'set' if key else 'unset'}")
+        print("    Running in SIMULATED escrow mode.")
+        sys.exit(0)
+
+    print(f"[*] Node URL: {url}")
+    print(f"[*] Network: {network}")
+
+    try:
+        resp = httpx.get(url.rstrip("/") + "/health", timeout=5.0)
+        print(f"[*] Health check: HTTP {resp.status_code} -> {resp.text}")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[!] Node unreachable: {exc}")
+        sys.exit(1)
+
+    if not args.confirm:
+        print("[+] Smoke check passed (dry-run mode). Use --confirm to perform live escrow operations.")
+    else:
+        print("[*] Live confirmed mode active.")
+
+
+if __name__ == "__main__":
+    main()

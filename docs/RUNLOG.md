@@ -21,7 +21,12 @@ This document logs all network configurations, testnet transactions, and end-to-
 
 ---
 
-## 2. End-to-End Autonomous Demo Execution Log
+## 2. End-to-End Autonomous Demo Execution Log [SIMULATED MODE]
+
+> [!NOTE]
+> **Mode: SIMULATED (`PAYMENT_MODE=off`)**
+> The automated demo scenario recorded below was executed using the local test harness simulation (`SIMULATED-...` blockchain identifiers). It tests and verifies the complete 10-step autonomous buyer/seller orchestration, independent VAT/ARES verification, Bayesian reputation slashing, prompt injection filtering, and automatic dispute refund authorization prior to live on-chain Cardano execution.
+> For live on-chain Cardano Preprod escrow runs via Masumi smart contracts, see [MASUMI_INTEGRATION.md](MASUMI_INTEGRATION.md).
 
 The automated demo scenario was executed via `./scripts/run_demo.sh`.
 

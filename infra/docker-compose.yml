@@ -5,6 +5,8 @@ services:
       dockerfile: infra/Dockerfile
     container_name: aicc-seller-honest
     command: ["python", "-m", "seller.app"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${PORT_HONEST:-8003}:8001"
     environment:
@@ -12,7 +14,11 @@ services:
       - PORT=8001
       - FIRM_PRICE_LOVELACE=5000000
       - PAYMENT_MODE=${PAYMENT_MODE:-off}
-      - PAYMENT_SERVICE_URL=http://masumi-payment-service:3001/api/v1
+      - PAYMENT_SERVICE_URL=${PAYMENT_SERVICE_URL_DOCKER:-http://host.docker.internal:3001/api/v1}
+      - PAYMENT_API_KEY=${SELLER_PAYMENT_API_KEY:-}
+      - AGENT_IDENTIFIER=${AGENT_IDENTIFIER_HONEST:-}
+      - NETWORK=${NETWORK:-Preprod}
+      - SUPPORTED_PAYMENT_SOURCE_INDEX=${SUPPORTED_PAYMENT_SOURCE_INDEX:-0}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/availability')"]
       interval: 5s
@@ -25,6 +31,8 @@ services:
       dockerfile: infra/Dockerfile
     container_name: aicc-seller-sloppy
     command: ["python", "-m", "seller.app"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${PORT_SLOPPY:-8002}:8002"
     environment:
@@ -32,7 +40,11 @@ services:
       - PORT=8002
       - FIRM_PRICE_LOVELACE=2000000
       - PAYMENT_MODE=${PAYMENT_MODE:-off}
-      - PAYMENT_SERVICE_URL=http://masumi-payment-service:3001/api/v1
+      - PAYMENT_SERVICE_URL=${PAYMENT_SERVICE_URL_DOCKER:-http://host.docker.internal:3001/api/v1}
+      - PAYMENT_API_KEY=${SELLER_PAYMENT_API_KEY:-}
+      - AGENT_IDENTIFIER=${AGENT_IDENTIFIER_SLOPPY:-}
+      - NETWORK=${NETWORK:-Preprod}
+      - SUPPORTED_PAYMENT_SOURCE_INDEX=${SUPPORTED_PAYMENT_SOURCE_INDEX:-0}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/availability')"]
       interval: 5s
@@ -45,12 +57,20 @@ services:
       dockerfile: infra/Dockerfile
     container_name: aicc-buyer-dashboard
     command: ["python", "-m", "buyer.dashboard.app"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "127.0.0.1:${PORT_DASHBOARD:-8004}:8000"
     environment:
       - PORT=8000
       - EVENTS_PATH=/app/buyer/state/events.jsonl
       - SELLER_URLS=http://seller-honest:8001,http://seller-sloppy:8002
+      - PAYMENT_SERVICE_URL=${PAYMENT_SERVICE_URL_DOCKER:-http://host.docker.internal:3001/api/v1}
+      - PAYMENT_API_KEY=${BUYER_PAYMENT_API_KEY:-}
+      - NETWORK=${NETWORK:-Preprod}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-deepseek/deepseek-chat}
+      - DASHBOARD_ADMIN_TOKEN=${DASHBOARD_ADMIN_TOKEN:-}
     volumes:
       - buyer-state:/app/buyer/state
     depends_on:

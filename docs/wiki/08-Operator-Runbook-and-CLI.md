@@ -9,7 +9,7 @@
 | Переменная | По умолчанию | Описание |
 |---|---|---|
 | `NETWORK` | `Preprod` | Сеть Cardano (`Preprod` или `Mainnet`) |
-| `BLOCKFROST_PROJECT_ID` | `preprodMoN7...` | API ключ Blockfrost для синхронизации блоков |
+| `BLOCKFROST_PROJECT_ID` | `<your-blockfrost-key>` | API ключ Blockfrost для синхронизации блоков |
 | `PAYMENT_SERVICE_URL` | `http://localhost:3001` | URL локальной ноды Masumi Payment Service |
 | `PAYMENT_API_KEY` | `dev-token` | Секретный токен для авторизации запросов к ноде |
 | `PAYMENT_MODE` | `off` | Режим платежей: `off` (симуляция) или `masumi` (реальный ончейн эскроу) |

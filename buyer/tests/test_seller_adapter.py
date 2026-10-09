@@ -151,11 +151,12 @@ def test_dispute_endpoint_authorizes_for_sloppy() -> None:
     from common.checks import Check, CheckCode, Severity, VerificationReport
 
     adapter = real_seller(SLOPPY)
-    start = adapter.start(make_job_input(), PURCHASER_ID)
+    job_input = make_job_input()
+    start = adapter.start(job_input, PURCHASER_ID)
 
     report = VerificationReport(
         seller_id=SLOPPY.name,
-        package_sha256="0" * 64,
+        package_sha256=job_input.package_sha256,
         checks=[
             Check(
                 code=CheckCode.VAT_RATE_ALLOWED,
