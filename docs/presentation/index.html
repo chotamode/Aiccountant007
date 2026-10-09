@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aiccountant007 — Hackathon Pitch Deck</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #090d16;
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    header {
+      width: 100%;
+      max-width: 1200px;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #1e293b;
+    }
+    .logo { font-size: 20px; font-weight: 700; color: #38bdf8; }
+    .nav-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #f8fafc;
+      padding: 8px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .nav-btn:hover { background: #334155; border-color: #38bdf8; }
+    .deck-container {
+      margin-top: 24px;
+      width: 90vw;
+      max-width: 1280px;
+      aspect-ratio: 16 / 9;
+      background: #0f172a;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+      border: 1px solid #334155;
+      position: relative;
+    }
+    .slide-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    .controls {
+      margin-top: 18px;
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+    .counter { font-size: 16px; color: #94a3b8; font-weight: 600; min-width: 80px; text-align: center; }
+    .links-bar {
+      margin: 24px 0 40px;
+      display: flex;
+      gap: 16px;
+    }
+    .dl-link {
+      color: #38bdf8;
+      text-decoration: none;
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .dl-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">Aiccountant007 Pitch Deck</div>
+    <div>
+      <span style="color: #94a3b8; font-size: 14px; margin-right: 16px;">Team ELEPASH · Masumi Network</span>
+      <a href="Aiccountant007_Presentation.pdf" class="nav-btn" download>Download PDF</a>
+    </div>
+  </header>
+
+  <div class="deck-container" id="container">
+    <img id="slide" class="slide-img" src="slides/slide_01.png" alt="Slide 1">
+  </div>
+
+  <div class="controls">
+    <button class="nav-btn" onclick="prevSlide()">◀ Previous</button>
+    <span class="counter" id="counter">01 / 10</span>
+    <button class="nav-btn" onclick="nextSlide()">Next ▶</button>
+    <button class="nav-btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+  </div>
+
+  <div class="links-bar">
+    <a class="dl-link" href="slides/slide_01.png" target="_blank">View Raw PNG</a>
+    <span style="color: #475569;">•</span>
+    <a class="dl-link" href="https://github.com/chotamode/Aiccountant007" target="_blank">GitHub Repository</a>
+    <span style="color: #475569;">•</span>
+    <span style="color: #64748b; font-size: 14px;">Use ← and → arrow keys to navigate</span>
+  </div>
+
+  <script>
+    let cur = 1;
+    const total = 10;
+    function update() {
+      const pad = String(cur).padStart(2, '0');
+      document.getElementById('slide').src = `slides/slide_${pad}.png`;
+      document.getElementById('counter').innerText = `${pad} / ${String(total).padStart(2, '0')}`;
+    }
+    function prevSlide() { if (cur > 1) { cur--; update(); } }
+    function nextSlide() { if (cur < total) { cur++; update(); } }
+    function toggleFullscreen() {
+      const el = document.getElementById('container');
+      if (!document.fullscreenElement) el.requestFullscreen().catch(e => console.log(e));
+      else document.exitFullscreen();
+    }
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') prevSlide();
+      if (e.key === 'ArrowRight' || e.key === ' ') nextSlide();
+      if (e.key === 'f') toggleFullscreen();
+    });
+  </script>
+</body>
+</html>

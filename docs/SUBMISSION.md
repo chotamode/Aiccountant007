@@ -23,4 +23,6 @@ Aiccountant007 demonstrates verifiable B2B agentic commerce:
 
 ### Links
 * **Repository**: https://github.com/chotamode/Aiccountant007
-* **Demo Video (90s)**: [Placeholder - https://youtu.be/Aiccountant007-demo]
+* **Demo Video (90s)**: [docs/video/Aiccountant007_Demo_90s.mp4](docs/video/Aiccountant007_Demo_90s.mp4)
+* **Pitch Deck (PDF)**: [docs/presentation/Aiccountant007_Presentation.pdf](docs/presentation/Aiccountant007_Presentation.pdf)
+* **Cardano Preprod Run Log**: [docs/RUNLOG.md](docs/RUNLOG.md)

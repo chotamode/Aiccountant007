@@ -253,7 +253,7 @@ def to_text(inv: Invoice) -> str:
     ]
     for line in inv.lines:
         desc = line.desc if len(line.desc) <= 37 else line.desc[:34] + "..."
-        out.append(f"{desc:<38}{str(line.qty):>7} {_amount(line.unit_price):>9} {str(line.vat_rate) + '%':>4} {_amount(line.base):>10}")
+        out.append(f"{desc:<38}{line.qty!s:>7} {_amount(line.unit_price):>9} {str(line.vat_rate) + '%':>4} {_amount(line.base):>10}")
     out.append("")
     for rate, (base, vat) in inv.vat_by_rate().items():
         out.append(f"Základ {rate} %: {_amount(base):>12}   DPH {rate} %: {_amount(vat):>10}")

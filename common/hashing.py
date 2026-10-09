@@ -40,7 +40,7 @@ def masumi_input_hash(input_data: Mapping[str, Any], identifier_from_purchaser: 
     Keep input_data free of floats: canonical JSON of floats is not portable.
     """
     canonical = canonicaljson.encode_canonical_json(dict(input_data)).decode("utf-8")
-    return sha256_hex(f"{identifier_from_purchaser};{canonical}".encode("utf-8"))
+    return sha256_hex(f"{identifier_from_purchaser};{canonical}".encode())
 
 
 def masumi_output_hash(output: str, identifier_from_purchaser: str) -> str:
@@ -49,4 +49,4 @@ def masumi_output_hash(output: str, identifier_from_purchaser: str) -> str:
     The output string is JSON-escaped (without surrounding quotes) first.
     """
     escaped = json.dumps(output, ensure_ascii=False)[1:-1]
-    return sha256_hex(f"{identifier_from_purchaser};{escaped}".encode("utf-8"))
+    return sha256_hex(f"{identifier_from_purchaser};{escaped}".encode())

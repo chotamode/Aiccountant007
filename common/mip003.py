@@ -12,7 +12,14 @@ from collections.abc import Mapping
 from enum import StrEnum
 from typing import Any
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 from common.documents import Document
 from common.hashing import package_hash

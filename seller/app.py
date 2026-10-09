@@ -102,7 +102,7 @@ def create_app(profile: FirmProfile | None = None, payment_mode: str | None = No
         """Do the work and book revenue + costs. Called once the job is paid."""
         try:
             result, costs = process(job_input, profile, job_id=job.job_id)
-        except Exception as exc:  # one bad job must not take the agent down
+        except Exception as exc:  # noqa: BLE001  # one bad job must not take the agent down
             with lock:
                 job.status, job.error = JobStatus.FAILED, str(exc)
             return
@@ -120,11 +120,11 @@ def create_app(profile: FirmProfile | None = None, payment_mode: str | None = No
 
     def run_paid_job(job: _Job, job_input: JobInput) -> None:
         # TODO(E3): interface from TASKS.md E3; module lands with feat/e3-seller-payment.
-        from seller import masumi_payment  # noqa: PLC0415
+        from seller import masumi_payment
 
         try:
             masumi_payment.wait_funds_locked(job.blockchain_identifier)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             with lock:
                 job.status, job.error = JobStatus.FAILED, f"payment not locked: {exc}"
             return
@@ -175,7 +175,7 @@ def create_app(profile: FirmProfile | None = None, payment_mode: str | None = No
             run_job(job, job_input)
         else:
             try:
-                from seller import masumi_payment  # noqa: PLC0415  TODO(E3)
+                from seller import masumi_payment
             except ImportError as exc:
                 raise HTTPException(status_code=501, detail="PAYMENT_MODE=masumi needs E3") from exc
             response = masumi_payment.create_payment(
@@ -255,10 +255,10 @@ def create_app(profile: FirmProfile | None = None, payment_mode: str | None = No
         authorized = profile.sloppy and len(blocking) > 0
         if authorized:
             if not simulated:
-                from seller import masumi_payment  # noqa: PLC0415
+                from seller import masumi_payment
                 try:
                     masumi_payment.authorize_refund(job.blockchain_identifier)
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001
                     return {
                         "job_id": job.job_id,
                         "authorized": False,
@@ -293,10 +293,10 @@ def create_app(profile: FirmProfile | None = None, payment_mode: str | None = No
 
 
 def main() -> None:
-    import uvicorn  # noqa: PLC0415
+    import uvicorn
 
     try:
-        from dotenv import load_dotenv  # noqa: PLC0415
+        from dotenv import load_dotenv
 
         load_dotenv()
     except ImportError:

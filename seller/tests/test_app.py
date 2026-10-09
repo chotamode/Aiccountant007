@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import re
-from decimal import Decimal
 import subprocess
+from decimal import Decimal
 
 import pytest
 from fastapi.testclient import TestClient

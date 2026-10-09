@@ -112,7 +112,19 @@ Services:
 
 ---
 
-## 5. Honest Limitations & Disclosures
+## 5. Submission Assets & Pitch Deck
+
+* 🎬 **90-Second Demo Video**: [`docs/video/Aiccountant007_Demo_90s.mp4`](docs/video/Aiccountant007_Demo_90s.mp4) (1920x1080, 86.59s, studio audio narration)
+* 📜 **Video Storyboard & Script**: [`docs/video/SCRIPT.md`](docs/video/SCRIPT.md)
+* 🎙️ **Voiceover Audio Tracks**: [`docs/video/voice/`](docs/video/voice/)
+* 📊 **Pitch Deck (PDF)**: [`docs/presentation/Aiccountant007_Presentation.pdf`](docs/presentation/Aiccountant007_Presentation.pdf) (10 slides, 1920x1080)
+* 🖥️ **Interactive Presentation (HTML)**: [`docs/presentation/index.html`](docs/presentation/index.html)
+* 📝 **Cardano Preprod Run Log**: [`docs/RUNLOG.md`](docs/RUNLOG.md)
+* 🏆 **Hackathon HQ Submission Text**: [`docs/SUBMISSION.md`](docs/SUBMISSION.md)
+
+---
+
+## 6. Honest Limitations & Disclosures
 
 In accordance with our architecture guidelines:
 * **On-Chain Escrow vs Simulated Mode**: When running with `PAYMENT_MODE=off`, payments and timestamps are marked with `[SIMULATED]`. Real Cardano transactions require `PAYMENT_MODE=masumi` with a funded Cardano Preprod wallet and Blockfrost API credentials.
