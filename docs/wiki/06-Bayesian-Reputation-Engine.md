@@ -1,37 +1,37 @@
-# 📊 06. Байесовская репутация (Slashing)
+# 📊 06. Bayesian Reputation (Slashing)
 
-[← Назад на Главную](Home)
-
----
-
-## 1. Зачем нужна Байесовская оценка?
-
-Простой процент успеха $\frac{\text{успешные}}{\text{всего}}$ страдает от «проблемы холодного старта»:
-* Новый агент с 1 успешной сделкой из 1 получил бы рейтинг $100\%$ ($1.0$), обогнав надежную фирму с $99$ успешными из $100$ ($0.99$).
-* Новый агент с 1 ошибкой получил бы рейтинг $0\%$, не имея шанса реабилитироваться.
-
-В **Aiccountant007** используется априорное бета-распределение со сглаживанием Лапласа (Laplace Smoothing):
-
-$$\text{Score} = \frac{\text{Успешные сделки} + 1}{\text{Всего сделок} + 2}$$
+[← Back to Home](Home)
 
 ---
 
-## 2. Динамика рейтинга в ходе работы
+## 1. Why Bayesian Evaluation?
 
-* **Начальное состояние (новые агенты)**:
+A naive success ratio $\frac{\text{successful}}{\text{total}}$ suffers from the "cold start problem":
+* A new agent with 1 successful job out of 1 would receive a $100\%$ ($1.0$) score, outpacing an established firm with $99$ successes out of $100$ ($0.99$).
+* A new agent with 1 initial failure would drop to $0\%$, with no opportunity to recover.
+
+**Aiccountant007** utilizes a Beta prior distribution with Laplace smoothing:
+
+$$\text{Score} = \frac{\text{Successful Deals} + 1}{\text{Total Deals} + 2}$$
+
+---
+
+## 2. Rating Dynamics in Production
+
+* **Initial State (New Agents)**:
   $$\text{Score} = \frac{0 + 1}{0 + 2} = 0.50$$
-* **Порог отбора (`REPUTATION_THRESHOLD`)**: `0.40`. Новый агент допускается к участию в тендере.
+* **Selection Threshold (`REPUTATION_THRESHOLD`)**: `0.40`. A new agent is eligible to participate in marketplace dispatch.
 
-### Кейс CheapBooks (халтура и срез рейтинга):
-1. Начало: $0/0 \to 0.50$ (проходит фильтр).
-2. Выявление неверного НДС в первом же заказе:
+### CheapBooks Case Study (Sloppy Execution & Slashing):
+1. Start: $0/0 \to 0.50$ (passes threshold).
+2. Invalid VAT detected on the very first order:
    $$\text{Score} = \frac{0 + 1}{1 + 2} = 0.333$$
-3. Оценка $0.333 < 0.40$ $\implies$ **автоматическое исключение из пула поставщиков**.
+3. Score $0.333 < 0.40$ $\implies$ **automatically blacklisted and excluded from the provider pool**.
 
-### Кейс ProÚčetní (надежность и рост):
-1. Начало: $0/0 \to 0.50$.
-2. Успешное выполнение первого пакета:
+### ProÚčetní Case Study (Reliability & Growth):
+1. Start: $0/0 \to 0.50$.
+2. Successful completion of the first package:
    $$\text{Score} = \frac{1 + 1}{1 + 2} = 0.667$$
-3. Успешное выполнение второго пакета:
+3. Successful completion of the second package:
    $$\text{Score} = \frac{2 + 1}{2 + 2} = 0.750$$
-4. Доверие укрепляется, агент получает приоритет при равных ценах.
+4. Confidence solidifies, giving the agent priority selection when prices are tied.

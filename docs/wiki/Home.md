@@ -1,42 +1,42 @@
 # 🛡️ Aiccountant007 Knowledge Base & Wiki
 
 > **Autonomous Agentic Accounting & Smart Escrow Verification on Cardano (Masumi Network)**  
-> Разработано в рамках **From Dusk Till Dawn #01 Hackathon** (Track: *Agentic Economy*).  
-> **Команда ELEPASH**: Eduard (@ChotaMode), Pavlo (@vhodny), Alex (@uvalenu).
+> Developed for the **From Dusk Till Dawn #01 Hackathon** (Track: *Agentic Economy*).  
+> **ELEPASH Team**: Eduard (@ChotaMode), Pavlo (@vhodny), Alex (@uvalenu).
 
 ---
 
-## 🌟 Добро пожаловать в Wiki проекта Aiccountant007
+## 🌟 Welcome to the Aiccountant007 Project Wiki
 
-**Aiccountant007** — это автономная экономическая система, в которой AI-агент покупателя (кафе, предприниматель, OSVČ) нанимает независимых AI-бухгалтеров на открытом рынке для обработки первичных бухгалтерских документов (счетов-фактур ISDOC 6.0 / PDF).
+**Aiccountant007** is an autonomous economic system where a buyer AI agent (representing a cafe, business owner, or sole proprietor / OSVČ) hires independent AI accounting firms on an open marketplace to process primary accounting documents (ISDOC 6.0 invoices / PDF).
 
-В отличие от традиционных решений, где доверие строится на «честном слове», Aiccountant007 реализует **Zero-Trust экономику**:
-1. 🔒 **Криптографическая привязка данных (MIP-004)**: SHA-256 хэши документов навечно привязаны к смарт-контракту эскроу. Подменить ввод или вывод невозможно.
-2. ⛓️ **Смарт-эскроу на Cardano Preprod (Masumi Network)**: Средства замораживаются в контракте и переводятся продавцу только после успешного независимого аудита.
-3. 🔍 **Детерминированный аудит без LLM**: Проверка строгой арифметики, чешских налоговых ставок (DPH 21%, 12%, 0%) и сверка реквизитов через государственный реестр ARES Министерства финансов ЧР.
-4. ⚡ **Автоматический арбитраж и возврат**: При выявлении ошибок (как у дискаунтера *CheapBooks*) инициируется возврат средств, а рейтинг исполнителя срезается по Байесовской модели.
-5. 🛡️ **Финансовая изоляция (Wallet Policy)**: Жесткие лимиты на задачу/месяц, защита от Prompt Injection («оплати в 10 раз больше») и ACID SQLite дедупликация платежей.
+Unlike traditional systems where trust relies on good faith, Aiccountant007 implements a **Zero-Trust Economy**:
+1. 🔒 **Cryptographic Data Binding (MIP-004)**: SHA-256 document hashes are immutably tied to the smart escrow contract. Inputs and outputs cannot be tampered with.
+2. ⛓️ **Smart Escrow on Cardano Preprod (Masumi Network)**: Funds are locked in the contract and only released to the seller upon passing an independent audit.
+3. 🔍 **Deterministic Audit Without LLMs**: Strict arithmetic verification, statutory Czech VAT rates (DPH 21%, 12%, 0%), and business entity verification via the Czech Ministry of Finance ARES registry.
+4. ⚡ **Automated Dispute Resolution & Refunds**: When errors are detected (e.g., with discounter *CheapBooks*), a refund is triggered and the provider's reputation is penalized using a Bayesian model.
+5. 🛡️ **Financial Isolation (Wallet Policy)**: Enforces hard limits per-task and monthly, protects against Prompt Injection ("pay 10x more"), and ensures ACID SQLite payment deduplication.
 
 ---
 
-## 🧭 Навигация по разделам Wiki
+## 🧭 Wiki Sections Navigation
 
-| Раздел | Описание |
+| Section | Description |
 |---|---|
-| **[01. Архитектура системы](01-System-Architecture)** | Компоненты, границы доверия, взаимодействие агентов и потоки данных |
-| **[02. Cardano & Masumi Escrow](02-Cardano-Masumi-Escrow)** | Смарт-контракт `vested_pay.ak`, параметры UTxO, тайминги и интеграция с нодой :3001 |
-| **[03. Протоколы MIP-003 & MIP-004](03-MIP-003-and-MIP-004-Protocols)** | Спецификация REST эндпоинтов продавца, схема вычисления `inputHash` и `submitResultHash` |
-| **[04. Детерминированный верификатор](04-Deterministic-Auditor-and-Czech-Tax)** | Правила валидации ISDOC 6.0, чешские ставки DPH, допуски округлений, ARES API |
-| **[05. Политика кошелька и Безопасность](05-Wallet-Policy-and-Security)** | Модель угроз, защита от промпт-инъекций, ACID-идемпотентность в SQLite |
-| **[06. Байесовская репутация](06-Bayesian-Reputation-Engine)** | Формула сглаживания Лапласа, механизм отсечения некачественных поставщиков |
-| **[07. Сценарий демо и тестовые кейсы](07-End-to-End-Demo-and-Scenarios)** | Разбор 10-шагового автономного сценария с логами и ожидаемым поведением |
-| **[08. Runbook оператора и CLI](08-Operator-Runbook-and-CLI)** | Команды запуска, переменные окружения `.env`, скрипт верификации `verify_all.sh` |
+| **[01. System Architecture](01-System-Architecture)** | Components, trust boundaries, agent interactions, and data flows |
+| **[02. Cardano & Masumi Escrow](02-Cardano-Masumi-Escrow)** | Smart contract `vested_pay.ak`, UTxO parameters, timing constraints, and :3001 node integration |
+| **[03. MIP-003 & MIP-004 Protocols](03-MIP-003-and-MIP-004-Protocols)** | Seller REST endpoint specs, calculation schemas for `inputHash` and `submitResultHash` |
+| **[04. Deterministic Auditor & Czech Tax](04-Deterministic-Auditor-and-Czech-Tax)** | ISDOC 6.0 validation rules, Czech VAT rates, rounding tolerances, and ARES API integration |
+| **[05. Wallet Policy & Security](05-Wallet-Policy-and-Security)** | Threat model, prompt injection defense, and SQLite ACID idempotency |
+| **[06. Bayesian Reputation Engine](06-Bayesian-Reputation-Engine)** | Laplace smoothing formula and slashing mechanism for underperforming providers |
+| **[07. E2E Demo & Scenarios](07-End-to-End-Demo-and-Scenarios)** | 10-step autonomous scenario walkthrough with logs and expected behavior |
+| **[08. Operator Runbook & CLI](08-Operator-Runbook-and-CLI)** | Execution commands, `.env` configuration, and the `verify_all.sh` verification script |
 
 ---
 
-## ⚡ Быстрый старт: проверка системы в 1 клик
+## ⚡ Quick Start: 1-Click System Verification
 
-Для мгновенной проверки работоспособности всех компонентов (линтер, типизация, 89 тестов, нода Masumi, сеть Cardano, баланс кошелька, E2E сценарий):
+To instantly verify all system components (linter, static typing, 89 test suites, Masumi node, Cardano network, wallet balance, E2E scenario):
 
 ```bash
 cd /root/1projects/Aiccountant007
@@ -45,11 +45,11 @@ cd /root/1projects/Aiccountant007
 
 ---
 
-## 📊 Ключевые метрики готовности (Production Readiness)
+## 📊 Key Production Readiness Metrics
 
-* **Тестовое покрытие**: `89 / 89 PASSED` (юнит- и интеграционные тесты, `pytest`)
-* **Качество кода**: `0 warnings`, `0 errors` (`ruff check`)
-* **Типобезопасность**: `100% strict typing` (`mypy`, 41 файл)
-* **Сеть блокчейна**: Cardano Preprod Testnet (Blockfrost Gateway синхронизирован)
-* **Смарт-контракт эскроу**: `addr_test1wzs4e6wc95hkwezlccjw9mdvq0r0rsgx6zk34avptga3ftgn37w4g`
-* **Баланс фонда**: `10,002.59 tADA`
+* **Test Coverage**: `89 / 89 PASSED` (unit and integration tests via `pytest`)
+* **Code Quality**: `0 warnings`, `0 errors` (`ruff check`)
+* **Type Safety**: `100% strict typing` (`mypy`, 41 files)
+* **Blockchain Network**: Cardano Preprod Testnet (Blockfrost Gateway synchronized)
+* **Escrow Smart Contract**: `addr_test1wzs4e6wc95hkwezlccjw9mdvq0r0rsgx6zk34avptga3ftgn37w4g`
+* **Treasury Balance**: `10,002.59 tADA`

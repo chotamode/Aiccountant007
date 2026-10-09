@@ -8,15 +8,15 @@ WIKI_DIR = "/root/1projects/Aiccountant007/docs/wiki"
 OUTPUT_HTML = os.path.join(WIKI_DIR, "index.html")
 
 ARTICLE_METADATA = [
-    {"id": "Home", "title": "🏠 Главная / Обзор", "icon": "🏠"},
-    {"id": "01-System-Architecture", "title": "🏗️ 01. Архитектура системы", "icon": "🏗️"},
+    {"id": "Home", "title": "🏠 Home / Overview", "icon": "🏠"},
+    {"id": "01-System-Architecture", "title": "🏗️ 01. System Architecture", "icon": "🏗️"},
     {"id": "02-Cardano-Masumi-Escrow", "title": "⛓️ 02. Cardano & Masumi Escrow", "icon": "⛓️"},
-    {"id": "03-MIP-003-and-MIP-004-Protocols", "title": "📜 03. Протоколы MIP-003 & MIP-004", "icon": "📜"},
-    {"id": "04-Deterministic-Auditor-and-Czech-Tax", "title": "🔍 04. Детерминированный верификатор", "icon": "🔍"},
-    {"id": "05-Wallet-Policy-and-Security", "title": "🛡️ 05. Политика кошелька и Безопасность", "icon": "🛡️"},
-    {"id": "06-Bayesian-Reputation-Engine", "title": "📊 06. Байесовская репутация", "icon": "📊"},
-    {"id": "07-End-to-End-Demo-and-Scenarios", "title": "🎬 07. Сценарий демо и кейсы", "icon": "🎬"},
-    {"id": "08-Operator-Runbook-and-CLI", "title": "🛠️ 08. Runbook оператора и CLI", "icon": "🛠️"},
+    {"id": "03-MIP-003-and-MIP-004-Protocols", "title": "📜 03. MIP-003 & MIP-004 Protocols", "icon": "📜"},
+    {"id": "04-Deterministic-Auditor-and-Czech-Tax", "title": "🔍 04. Deterministic Auditor (DPH/ARES)", "icon": "🔍"},
+    {"id": "05-Wallet-Policy-and-Security", "title": "🛡️ 05. Wallet Policy & Security", "icon": "🛡️"},
+    {"id": "06-Bayesian-Reputation-Engine", "title": "📊 06. Bayesian Reputation Engine", "icon": "📊"},
+    {"id": "07-End-to-End-Demo-and-Scenarios", "title": "🎬 07. E2E Demo & Scenarios", "icon": "🎬"},
+    {"id": "08-Operator-Runbook-and-CLI", "title": "🛠️ 08. Operator Runbook & CLI", "icon": "🛠️"},
 ]
 
 articles_data = {}
@@ -30,7 +30,7 @@ for item in ARTICLE_METADATA:
             }
 
 html_template = """<!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -268,7 +268,7 @@ html_template = """<!DOCTYPE html>
       </a>
       <div class="brand-sub">Masumi Escrow & Agentic Accounting</div>
       <div class="search-box">
-        <input type="text" id="searchInput" class="search-input" placeholder="Поиск по документации..." oninput="filterNav()">
+        <input type="text" id="searchInput" class="search-input" placeholder="Search documentation..." oninput="filterNav()">
       </div>
     </div>
     
@@ -288,7 +288,7 @@ html_template = """<!DOCTYPE html>
   <main id="main-content">
     <div class="top-bar">
       <div class="breadcrumbs">
-        Aiccountant007 Wiki / <span id="currentTitle">Главная</span>
+        Aiccountant007 Wiki / <span id="currentTitle">Home</span>
       </div>
       <div class="top-actions">
         <a href="/" class="action-btn">🏠 Overview</a>

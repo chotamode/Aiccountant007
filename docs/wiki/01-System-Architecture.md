@@ -1,44 +1,44 @@
-# 🏗️ 01. Архитектура системы
+# 🏗️ 01. System Architecture
 
-[← Назад на Главную](Home)
+[← Back to Home](Home)
 
 ---
 
-## 1. Концепция и философия Zero-Trust
+## 1. Concept and Zero-Trust Philosophy
 
-В агентной экономике агент-покупатель заказывает услуги у внешних агентов, чей внутренний код, используемые LLM и честность неизвестны. 
+In an agentic economy, a buyer agent commissions services from external agents whose internal code, LLM backends, and operational integrity are unknown.
 
-Архитектура **Aiccountant007** построена на трёх столпах:
-1. **Криптографическая изоляция**: Данные задачи фиксируются хэшами по стандарту MIP-004 до начала работ.
-2. **Смарт-эскроу гарантии**: Оплата блокируется в смарт-контракте на блокчейне Cardano и не поступает исполнителю до подтверждения качества.
-3. **Детерминированный аудит без участия нейросетей**: Оценка качества работы производится не «другой LLM», а строгим математическим кодом на базе законодательных норм.
+The **Aiccountant007** architecture rests on three pillars:
+1. **Cryptographic Isolation**: Task data is immutably committed via MIP-004 standard hashes before work begins.
+2. **Smart Escrow Guarantees**: Payment is locked in a Cardano smart contract and never released to the provider until quality is verified.
+3. **Deterministic Audit Without Neural Networks**: Quality assessment is performed not by "another LLM", but by strict mathematical code enforcing statutory accounting rules.
 
 ```mermaid
 flowchart TD
-    subgraph CLIENT_TIER["Клиентский контур (Buyer Agent)"]
+    subgraph CLIENT_TIER["Client Boundary (Buyer Agent)"]
         direction TB
-        ORCH["<b>Orchestrator</b><br/>Автономный диспетчер задач"]
-        VAULT["<b>Document Vault</b><br/>Хэширование SHA-256"]
-        POLICY["<b>Wallet Policy</b><br/>ACID SQLite • Лимиты"]
+        ORCH["<b>Orchestrator</b><br/>Autonomous task dispatcher"]
+        VAULT["<b>Document Vault</b><br/>SHA-256 Hashing"]
+        POLICY["<b>Wallet Policy</b><br/>ACID SQLite • Limits"]
         VERIFIER["<b>Independent Verifier</b><br/>ISDOC 6.0 • DPH • ARES"]
-        REPUTATION["<b>Reputation Engine</b><br/>Байесовский скоринг"]
-        DASH["<b>Dashboard UI / SSE</b><br/>Порт :8004 • Телеметрия"]
+        REPUTATION["<b>Reputation Engine</b><br/>Bayesian Scoring"]
+        DASH["<b>Dashboard UI / SSE</b><br/>Port :8004 • Telemetry"]
     end
 
-    subgraph ESCROW_TIER["Слой смарт-эскроу (Cardano Preprod)"]
+    subgraph ESCROW_TIER["Smart Escrow Layer (Cardano Preprod)"]
         direction TB
-        NODE["<b>Masumi Payment Service Node</b><br/>Порт :3001 • REST API"]
+        NODE["<b>Masumi Payment Service Node</b><br/>Port :3001 • REST API"]
         SC[("<b>V2 Escrow Validator</b><br/>Aiken Smart Contract")]
-        BF["<b>Blockfrost API</b><br/>Синхронизация UTxO"]
+        BF["<b>Blockfrost API</b><br/>UTxO Synchronization"]
     end
 
-    subgraph SELLER_TIER["Рынок внешних фирм (MIP-003)"]
+    subgraph SELLER_TIER["External Provider Marketplace (MIP-003)"]
         direction TB
-        HONEST["<b>ProÚčetní</b> (Honest Firm)<br/>Порт :8003 • 5.0 tADA"]
-        SLOPPY["<b>CheapBooks</b> (Sloppy Firm)<br/>Порт :8002 • 2.0 tADA"]
+        HONEST["<b>ProÚčetní</b> (Honest Firm)<br/>Port :8003 • 5.0 tADA"]
+        SLOPPY["<b>CheapBooks</b> (Sloppy Firm)<br/>Port :8002 • 2.0 tADA"]
     end
 
-    %% Взаимосвязи
+    %% Interactions
     VAULT --> ORCH
     ORCH --> POLICY
     POLICY --> ORCH
@@ -55,29 +55,29 @@ flowchart TD
 
 ---
 
-## 2. Ключевые компоненты
+## 2. Key Components
 
-### 2.1. Покупатель (`buyer/`)
+### 2.1. Buyer (`buyer/`)
 
-* **`buyer/orchestrator.py`**: Управляет всем жизненным циклом сделки от обнаружения до выплаты или возврата.
-* **`buyer/wallet_policy.py`**: Защитный слой над кошельком компании. Работает на SQLite в транзакционном режиме (WAL). Проверяет совпадение цены с реестром, непревышение лимитов задачи и месяца, дедупликацию хэшей и порог ручного подтверждения.
-* **`buyer/verifier.py`**: Полностью детерминированный аудитор. Проверяет корректность сумм строк, итоговую сумму с учетом допустимой погрешности (1 CZK), легальность ставок чешского НДС (21%, 12%, 0%) и сверяет валидность реквизитов через ARES.
-* **`buyer/reputation.py`**: Хранит историю сделок в SQLite. Вычисляет байесовскую оценку надежности по формуле сглаживания Лапласа. Отсекает исполнителей с оценкой ниже `0.40`.
-* **`buyer/purchase.py`**: Клиент к сервису платежей Masumi. Поддерживает работу с живым смарт-контрактом (`PAYMENT_MODE=masumi`) и детерминированную симуляцию для локальных тестов (`PAYMENT_MODE=off`).
-* **`buyer/dashboard/`**: Веб-интерфейс оператора на FastAPI + Server-Sent Events (SSE) + Alpine.js на порту `8004`.
+* **`buyer/orchestrator.py`**: Manages the complete deal lifecycle from discovery to payment release or refund.
+* **`buyer/wallet_policy.py`**: Defensive boundary over company treasury. Operates on transactional SQLite (WAL mode). Enforces registry price matching, single-task and monthly spend caps, hash idempotency, and human approval thresholds.
+* **`buyer/verifier.py`**: Fully deterministic auditor. Verifies line item totals, grand total arithmetic within legal tolerance (1 CZK), validity of Czech VAT rates (21%, 12%, 0%), and cross-references business entities via ARES.
+* **`buyer/reputation.py`**: Maintains deal history in SQLite. Computes Bayesian reliability scores using Laplace smoothing. Excludes providers scoring below `0.40`.
+* **`buyer/purchase.py`**: Masumi payment service client. Supports live smart contract execution (`PAYMENT_MODE=masumi`) and deterministic simulation for local tests (`PAYMENT_MODE=off`).
+* **`buyer/dashboard/`**: Operator web dashboard built with FastAPI + Server-Sent Events (SSE) + Alpine.js on port `8004`.
 
-### 2.2. Продавцы (`seller/`)
+### 2.2. Sellers (`seller/`)
 
-* **`seller/app.py`**: Реализация протокола **MIP-003** на базе FastAPI:
-  * `GET /availability` — проверка готовности и получение публичного ключа продавца;
-  * `POST /start_job` — регистрация задачи, инициирование платежа через эскроу;
-  * `GET /status` — опрос готовности и получение результата (`JobResult`);
-  * `POST /dispute` — эндпоинт разрешения претензий покупателя.
-* **Профили поведения**:
-  * `FIRM_PROFILE=honest` (*ProÚčetní*): корректно разбирает XML-документы ISDOC, сохраняет точные ставки НДС.
-  * `FIRM_PROFILE=sloppy` (*CheapBooks*): дешевле в 2.5 раза, но использует устаревшие ставки НДС (15% вместо 21%), вызывая гарантированный сбой аудита.
+* **`seller/app.py`**: Implementation of the **MIP-003** protocol on FastAPI:
+  * `GET /availability` — readiness check and seller public key discovery;
+  * `POST /start_job` — task registration, initiating escrow payment requirement;
+  * `GET /status` — polling job completion and retrieving the result (`JobResult`);
+  * `POST /dispute` — endpoint for resolving buyer disputes.
+* **Provider Profiles**:
+  * `FIRM_PROFILE=honest` (*ProÚčetní*): Accurately parses ISDOC XML documents, preserves valid VAT rates.
+  * `FIRM_PROFILE=sloppy` (*CheapBooks*): 2.5x cheaper, but uses obsolete VAT rates (15% instead of 21%), triggering an immediate audit failure.
 
-### 2.3. Общие контракты (`common/`)
+### 2.3. Common Contracts (`common/`)
 
-* **`common/contracts.py`**: Pydantic v2 модели данных (`Document`, `JobInput`, `JobResult`, `ExtractedInvoice`, `VerificationReport`). Финансовые поля используют строгий тип `Decimal` без накопления погрешностей чисел с плавающей точкой.
-* **`common/hashing.py`**: Реализация стандартов вычисления хэшей пакета документов (`package_sha256`), а также входных и выходных хэшей Masumi (`inputHash`, `outputHash`).
+* **`common/contracts.py`**: Pydantic v2 data models (`Document`, `JobInput`, `JobResult`, `ExtractedInvoice`, `VerificationReport`). Financial fields use exact `Decimal` types to eliminate floating-point rounding errors.
+* **`common/hashing.py`**: Implementation of document package hashing (`package_sha256`), as well as Masumi input and output hashes (`inputHash`, `outputHash`).

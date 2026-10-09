@@ -1,49 +1,49 @@
-# 🎬 07. Сценарий демо и тестовые кейсы
+# 🎬 07. E2E Demo & Scenarios
 
-[← Назад на Главную](Home)
+[← Back to Home](Home)
 
 ---
 
-## 1. Сквозной 10-шаговый сценарий (`scripts/run_demo.sh`)
+## 1. End-to-End 10-Step Scenario (`scripts/run_demo.sh`)
 
-Сценарий демонстрирует полный цикл автономных экономических отношений между клиентом и бухгалтерскими сервисами.
+The demo scenario showcases the complete lifecycle of autonomous economic interactions between the client and accounting services.
 
-### Шаг 1. Хэширование пакета счетов
-* Документы счетов сканируются в `buyer/vault.py`.
-* Вычисляются SHA-256 хэши и общий `package_sha256`.
+### Step 1. Invoice Package Hashing
+* Invoice documents are scanned by `buyer/vault.py`.
+* Individual SHA-256 hashes and the composite `package_sha256` are computed.
 
-### Шаг 2. Обнаружение и выбор исполнителя
-* Оркестратор опрашивает каталог:
-  * *CheapBooks*: 2.0 tADA (репутация 0.50);
-  * *ProÚčetní*: 5.0 tADA (репутация 0.50).
-* Выбирается самый дешевый доступный вариант: **CheapBooks**.
+### Step 2. Discovery & Provider Selection
+* The orchestrator queries the marketplace catalog:
+  * *CheapBooks*: 2.0 tADA (reputation 0.50);
+  * *ProÚčetní*: 5.0 tADA (reputation 0.50).
+* The lowest-priced eligible provider is selected: **CheapBooks**.
 
-### Шаг 3. Блокировка эскроу
-* Через `POST /purchase` в смарт-контракте блокируются 2,000,000 lovelace.
-* Появляется ончейн-ссылка в Cardano Preprod Explorer.
+### Step 3. Escrow Lock
+* Via `POST /purchase`, 2,000,000 lovelace are locked in the smart contract.
+* An on-chain transaction link appears in the Cardano Preprod Explorer.
 
-### Шаг 4. Обнаружение ошибок аудитором
-* CheapBooks возвращает разобранные счета.
-* Детерминированный верификатор выявляет использование запрещенной ставки НДС 15% в двух позициях. Статус: `VERIFICATION_FAILED`.
+### Step 4. Auditor Detects Errors
+* CheapBooks submits the parsed invoice data.
+* The deterministic verifier identifies the illegal 15% VAT rate on two line items. Status: `VERIFICATION_FAILED`.
 
-### Шаг 5. Автоматический арбитраж
-* Отчет об ошибках отправляется в `POST /dispute`.
-* CheapBooks признает расхождения и санкционирует возврат средств.
+### Step 5. Automated Dispute Resolution
+* The discrepancy report is submitted to `POST /dispute`.
+* CheapBooks acknowledges the discrepancies and authorizes a full refund.
 
-### Шаг 6. Срез репутации
-* Репутация CheapBooks падает до $0.33$, фирма попадает в черный список.
+### Step 6. Reputation Slashing
+* CheapBooks' reputation drops to $0.33$, landing the firm on the blacklist.
 
-### Шаг 7. Отражение Prompt Injection
-* Документ `08_injection.isdoc` пытается потребовать оплату в 10 раз выше тарифа (20 tADA вместо 2 tADA).
-* `WalletPolicy` блокирует попытку с кодом `BLOCKED_PRICE_MISMATCH`.
+### Step 7. Defeating Prompt Injection
+* Document `08_injection.isdoc` attempts to demand 10x the agreed tariff (20 tADA instead of 2 tADA).
+* `WalletPolicy` blocks the attempt with code `BLOCKED_PRICE_MISMATCH`.
 
-### Шаг 8. Найм надежного исполнителя
-* Пакет №2 направляется фирме **ProÚčetní**.
-* Все проверки пройдены (НДС 21%/12%/0%, суммы сошлись, реквизиты в ARES подтверждены).
-* Средства в эскроу разблокируются в пользу ProÚčetní.
+### Step 8. Hiring a Reliable Provider
+* Package #2 is routed to **ProÚčetní**.
+* All audits pass (VAT 21%/12%/0%, math checks out, entities verified in ARES).
+* Escrow funds are released to ProÚčetní.
 
-### Шаг 9. Блокировка повторной оплаты
-* Повторная отправка пакета №2 блокируется `WalletPolicy` по совпадению хэшей (`BLOCKED_DUPLICATE`).
+### Step 9. Preventing Duplicate Payments
+* Re-submission of Package #2 is blocked by `WalletPolicy` based on hash matching (`BLOCKED_DUPLICATE`).
 
-### Шаг 10. Завершение спасенного пакета
-* Ранее отозванный у CheapBooks пакет №1 перенаправляется фирме ProÚčetní и успешно закрывается.
+### Step 10. Rescuing the Initial Package
+* Package #1, previously refunded by CheapBooks, is re-routed to ProÚčetní and completed successfully.

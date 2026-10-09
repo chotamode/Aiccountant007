@@ -1,18 +1,18 @@
-# 📜 03. Протоколы MIP-003 & MIP-004
+# 📜 03. MIP-003 & MIP-004 Protocols
 
-[← Назад на Главную](Home)
+[← Back to Home](Home)
 
 ---
 
-## 1. MIP-003: Стандарт взаимодействия с сервисом агента
+## 1. MIP-003: Agent Service Interaction Standard
 
-Протокол **MIP-003** определяет стандартный HTTP REST API, который обязан предоставлять сервис, предлагающий услуги в экосистеме Masumi.
+The **MIP-003** protocol defines the standard HTTP REST API that an agent service offering capabilities in the Masumi ecosystem must expose.
 
-В проекте Aiccountant007 агент-бухгалтер реализует следующий набор методов:
+In Aiccountant007, an accounting agent implements the following endpoints:
 
 ### 1.1. `GET /availability`
-Проверка готовности сервиса и получение криптографических реквизитов.
-* **Ответ**:
+Checks service availability and retrieves cryptographic identifiers and pricing.
+* **Response**:
 ```json
 {
   "status": "available",
@@ -26,8 +26,8 @@
 ```
 
 ### 1.2. `POST /start_job`
-Инициализация обработки пакета документов и создание платежного требования.
-* **Тело запроса**:
+Initializes processing of a document package and creates an escrow payment request.
+* **Request Body**:
 ```json
 {
   "identifier_from_purchaser": "deal-8a9f2b1c",
@@ -37,7 +37,7 @@
   }
 }
 ```
-* **Ответ**:
+* **Response**:
 ```json
 {
   "job_id": "job-381029",
@@ -51,8 +51,8 @@
 ```
 
 ### 1.3. `GET /status?job_id={id}`
-Проверка статуса обработки и получение результата.
-* **Ответ (когда готово)**:
+Checks job execution status and fetches the output.
+* **Response (when completed)**:
 ```json
 {
   "status": "completed",
@@ -61,30 +61,30 @@
 }
 ```
 
-### 1.4. `POST /dispute` *(Расширение Aiccountant007)*
-Автоматическое урегулирование претензий по качеству.
-* **Тело запроса**: `VerificationReport` с детальным описанием найденных расхождений в НДС или арифметике.
-* **Поведение продавца**: Сервис детерминированно перепроверяет свои выходные данные. Если ошибка подтверждается, вызывает `POST /payment/authorize-refund` на ноде Masumi.
+### 1.4. `POST /dispute` *(Aiccountant007 Extension)*
+Automated dispute resolution for quality discrepancies.
+* **Request Body**: `VerificationReport` detailing detected VAT or arithmetic discrepancies.
+* **Seller Behavior**: The service deterministically re-verifies its output. If the discrepancy is confirmed, it invokes `POST /payment/authorize-refund` on the Masumi node.
 
 ---
 
-## 2. MIP-004: Спецификация хэширования и доказательств
+## 2. MIP-004: Hashing and Proof Specification
 
-Протокол **MIP-004** гарантирует, что средства блокируются под конкретный набор байтов задачи.
+The **MIP-004** protocol guarantees that funds are escrowed strictly against a specific set of input bytes.
 
-Формулы хэширования (`common/hashing.py`):
+Hashing formulas (`common/hashing.py`):
 
-1. **Хэш каждого документа**:
+1. **Individual Document Hash**:
    $$\text{doc\_hash} = \text{SHA256}(\text{bytes})$$
 
-2. **Пакетный хэш (`package_sha256`)**:
+2. **Package Hash (`package_sha256`)**:
    $$\text{package\_sha256} = \text{SHA256}\left(\bigoplus_{i} \text{sorted}(\text{doc\_hash}_i)\right)$$
 
-3. **Входной хэш Masumi (`inputHash`)**:
+3. **Masumi Input Hash (`inputHash`)**:
    $$\text{inputHash} = \text{SHA256}(\text{purchaserId} + \text{";"} + \text{canonicalJSON}(\text{input\_data}))$$
 
-4. **Выходной хэш Masumi (`outputHash`)**:
+4. **Masumi Output Hash (`outputHash`)**:
    $$\text{outputHash} = \text{SHA256}(\text{purchaserId} + \text{";"} + \text{json\_escape}(\text{result}))$$
 
 > [!NOTE]
-> `package_sha256` зашит внутрь `input_data`, поэтому смарт-контракт Cardano своим ончейн-датумом одновременно подтверждает и факт передачи каждого индивидуального документа.
+> `package_sha256` is embedded inside `input_data`, ensuring the Cardano smart contract's on-chain datum simultaneously validates the transmission of each individual document.
