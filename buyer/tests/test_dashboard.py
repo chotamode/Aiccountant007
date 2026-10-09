@@ -12,10 +12,17 @@ from common.events import Actor, Event, EventType
 def test_dashboard_index():
     app = create_dashboard_app()
     client = TestClient(app)
-    response = client.get("/")
+    response = client.get("/dashboard")
     assert response.status_code == 200
     assert "Aiccountant007" in response.text
     assert "Live Event Stream" in response.text
+
+
+def test_root_serves_landing_and_video():
+    client = TestClient(create_dashboard_app())
+    assert client.get("/").text == client.get("/landing").text
+    video = client.get("/video/Aiccountant007_Demo_90s.mp4", headers={"Range": "bytes=0-15"})
+    assert video.status_code in (200, 206)
 
 
 def test_dashboard_history():

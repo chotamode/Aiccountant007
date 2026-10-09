@@ -34,7 +34,8 @@ INDEX_HTML_PATH = Path(__file__).parent / "index.html"
 LANDING_HTML_PATH = REPO_ROOT / "docs" / "landing" / "index.html"
 WIKI_DIR = REPO_ROOT / "docs" / "wiki"
 PRESENTATION_DIR = REPO_ROOT / "docs" / "presentation"
-VOICE_DIR = REPO_ROOT / "docs" / "video" / "voice"
+VIDEO_DIR = REPO_ROOT / "docs" / "video"
+VOICE_DIR = VIDEO_DIR / "voice"
 
 # Global lock for scenario runs to avoid overlapping executions
 _run_lock = threading.Lock()
@@ -50,7 +51,7 @@ def ensure_seller_services() -> None:
         try:
             with urllib.request.urlopen(f"http://127.0.0.1:{port}/availability", timeout=0.5) as resp:
                 return resp.status == 200
-        except Exception:
+        except Exception:  # noqa: BLE001 - any failure means "not up yet"
             return False
 
     env_base = os.environ.copy()
@@ -87,32 +88,59 @@ def ensure_seller_services() -> None:
         time.sleep(0.1)
 
 
-def execute_scenario_background(scenario: str, state_dir: Path) -> None:
+def _fresh_run_dir(state_dir: Path) -> Path:
+    """Create an isolated directory for one scenario run and drop older runs.
+
+    Wallet policy (duplicate ledger, monthly spend) and reputation are SQLite files.
+    Reusing them across button clicks makes every second run end in duplicate_blocked,
+    so each run gets a clean copy; the shared event feed is untouched.
+    """
+    import shutil
+    import uuid
+
+    runs_root = state_dir / "runs"
+    runs_root.mkdir(parents=True, exist_ok=True)
+    for old in runs_root.iterdir():
+        shutil.rmtree(old, ignore_errors=True)
+    run_dir = runs_root / uuid.uuid4().hex[:12]
+    run_dir.mkdir()
+    return run_dir
+
+
+def execute_scenario_background(scenario: str, state_dir: Path, bus: EventBus | None = None) -> None:
     """Run an audit scenario in a background worker thread, publishing events to the bus."""
     with _run_lock:
         try:
             ensure_seller_services()
 
-            from buyer.orchestrator import DealStatus, build_buyer, run_demo
+            import dataclasses
+
+            from buyer.orchestrator import build_buyer, run_demo
             from buyer.vault import load_documents
 
             env = os.environ.copy()
             env["SELLER_URLS"] = "http://127.0.0.1:8002,http://127.0.0.1:8003"
             invoices_dir = REPO_ROOT / "data" / "invoices"
 
-            buyer = build_buyer(state_dir, pace=0.1, env=env)
+            buyer = build_buyer(_fresh_run_dir(state_dir), pace=0.1, env=env)
+            # Publish into the feed the dashboard is streaming, not the per-run copy.
+            buyer = dataclasses.replace(buyer, bus=bus or EventBus(state_dir / "events.jsonl"))
             docs = {d.filename[:2]: d for d in load_documents(invoices_dir, "*.isdoc")}
 
             def batch(*numbers: str):
                 return [docs[n] for n in numbers if n in docs]
 
+            honest_url, sloppy_url = "http://127.0.0.1:8003", "http://127.0.0.1:8002"
+
             if scenario == "demo":
                 run_demo(buyer, invoices_dir, refund_timeout=0.0)
 
             elif scenario == "honest":
+                buyer = dataclasses.replace(buyer, seller_urls=[honest_url])
                 buyer.run_deal("September invoices, batch 2 (Honest Audit)", batch("04", "05", "06", "08"))
 
             elif scenario == "sloppy":
+                buyer = dataclasses.replace(buyer, seller_urls=[sloppy_url])
                 deal = buyer.run_deal("September invoices, batch 1 (Sloppy Audit)", batch("01", "02", "03", "07"))
                 buyer.settle_refund(deal, timeout=0.0)
 
@@ -121,10 +149,12 @@ def execute_scenario_background(scenario: str, state_dir: Path) -> None:
                     buyer.attack_drill("Injection simulation drill", docs["08"])
 
             elif scenario == "duplicate":
-                # Resubmit previously processed invoices
+                # Pay for the batch once, then resubmit it: the wallet policy must block the second payment.
+                buyer = dataclasses.replace(buyer, seller_urls=[honest_url])
+                buyer.run_deal("September invoices, batch 2", batch("04", "05"))
                 buyer.run_deal("Batch 2 duplicate resubmission attempt", batch("04", "05"))
 
-        except Exception as exc:
+        except Exception:  # noqa: BLE001 - background thread: log and keep the server alive
             import traceback
 
             traceback.print_exc()
@@ -141,13 +171,15 @@ def create_dashboard_app(bus: EventBus | None = None) -> FastAPI:
     if VOICE_DIR.exists():
         app.mount("/voice", StaticFiles(directory=str(VOICE_DIR)), name="voice")
 
+    if VIDEO_DIR.exists():
+        app.mount("/video", StaticFiles(directory=str(VIDEO_DIR)), name="video")
+
     if WIKI_DIR.exists():
         app.mount("/wiki", StaticFiles(directory=str(WIKI_DIR), html=True), name="wiki")
 
     if PRESENTATION_DIR.exists():
         app.mount("/presentation", StaticFiles(directory=str(PRESENTATION_DIR), html=True), name="presentation")
 
-    @app.get("/", response_class=HTMLResponse)
     @app.get("/dashboard", response_class=HTMLResponse)
     @app.get("/console", response_class=HTMLResponse)
     def dashboard_route() -> str:
@@ -155,10 +187,11 @@ def create_dashboard_app(bus: EventBus | None = None) -> FastAPI:
             raise HTTPException(status_code=404, detail="Dashboard index.html not found")
         return INDEX_HTML_PATH.read_text("utf-8")
 
+    @app.get("/", response_class=HTMLResponse)
     @app.get("/landing", response_class=HTMLResponse)
     def landing_route() -> str:
         if not LANDING_HTML_PATH.exists():
-            raise HTTPException(status_code=404, detail="Landing page not found")
+            return dashboard_route()
         return LANDING_HTML_PATH.read_text("utf-8")
 
     @app.get("/events")
@@ -195,7 +228,7 @@ def create_dashboard_app(bus: EventBus | None = None) -> FastAPI:
         """Trigger an audit scenario in a non-blocking background thread."""
         thread = threading.Thread(
             target=execute_scenario_background,
-            args=(scenario, state_dir),
+            args=(scenario, state_dir, bus),
             daemon=True,
         )
         thread.start()
@@ -212,7 +245,13 @@ def main() -> None:
     import uvicorn
 
     port = int(os.environ.get("PORT", "8000"))
-    uvicorn.run(create_dashboard_app(), host="0.0.0.0", port=port)
+    uvicorn.run(
+        create_dashboard_app(),
+        host="0.0.0.0",
+        port=port,
+        proxy_headers=True,
+        forwarded_allow_ips="*",
+    )
 
 
 if __name__ == "__main__":
