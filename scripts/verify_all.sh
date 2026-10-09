@@ -56,11 +56,11 @@ fi
 
 # 3. Test Suite (Pytest)
 echo -e "${BOLD}3. Running unit and integration test suite (Pytest)...${NC}"
-TEST_OUTPUT=$(.venv/bin/pytest -q)
-if echo "$TEST_OUTPUT" | grep -q "89 passed"; then
-    report_pass "Pytest: all 89 unit & integration tests passed cleanly"
+if TEST_OUTPUT=$(.venv/bin/pytest -q 2>&1); then
+    PASSED_LINE=$(echo "$TEST_OUTPUT" | grep -oE "[0-9]+ passed" | tail -n 1)
+    report_pass "Pytest: ${PASSED_LINE} — all unit & integration tests green"
 else
-    report_fail "Pytest failed: $TEST_OUTPUT"
+    report_fail "Pytest failed: $(echo "$TEST_OUTPUT" | tail -n 15)"
 fi
 
 # 4. Masumi Payment Node Check

@@ -126,3 +126,13 @@ def test_landing_and_docs_endpoints():
     assert resp_api.status_code == 200
     assert resp_api.json()["status"] == "dispatched"
 
+    # Test HEAD requests
+    assert client.head("/").status_code == 200
+    assert client.head("/dashboard").status_code == 200
+    assert client.head("/favicon.ico").status_code == 200
+
+    # Test favicon content
+    resp_fav = client.get("/favicon.ico")
+    assert resp_fav.status_code == 200
+    assert "svg" in resp_fav.text
+

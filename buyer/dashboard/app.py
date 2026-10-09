@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from buyer.events_bus import DEFAULT_EVENTS_PATH, EventBus
@@ -60,6 +60,9 @@ def get_seller_endpoints() -> tuple[str, str]:
             if "sloppy" in p0.lower() or "cheap" in p0.lower():
                 return p1, p0
             return p0, p1
+
+    if is_ok("http://seller-honest:8001") and is_ok("http://seller-sloppy:8002"):
+        return "http://seller-honest:8001", "http://seller-sloppy:8002"
 
     if is_ok("http://aicc-seller-honest:8001") and is_ok("http://aicc-seller-sloppy:8002"):
         return "http://aicc-seller-honest:8001", "http://aicc-seller-sloppy:8002"
@@ -212,15 +215,20 @@ def create_dashboard_app(bus: EventBus | None = None) -> FastAPI:
     if PRESENTATION_DIR.exists():
         app.mount("/presentation", StaticFiles(directory=str(PRESENTATION_DIR), html=True), name="presentation")
 
-    @app.get("/dashboard", response_class=HTMLResponse)
-    @app.get("/console", response_class=HTMLResponse)
+    @app.api_route("/favicon.ico", methods=["GET", "HEAD"], include_in_schema=False)
+    def favicon() -> Response:
+        svg = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><text y="24" font-size="24">🛡️</text></svg>"""
+        return Response(content=svg, media_type="image/svg+xml", headers={"Cache-Control": "public, max-age=86400"})
+
+    @app.api_route("/dashboard", methods=["GET", "HEAD"], response_class=HTMLResponse)
+    @app.api_route("/console", methods=["GET", "HEAD"], response_class=HTMLResponse)
     def dashboard_route() -> str:
         if not INDEX_HTML_PATH.exists():
             raise HTTPException(status_code=404, detail="Dashboard index.html not found")
         return INDEX_HTML_PATH.read_text("utf-8")
 
-    @app.get("/", response_class=HTMLResponse)
-    @app.get("/landing", response_class=HTMLResponse)
+    @app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
+    @app.api_route("/landing", methods=["GET", "HEAD"], response_class=HTMLResponse)
     def landing_route() -> str:
         if not LANDING_HTML_PATH.exists():
             return dashboard_route()
