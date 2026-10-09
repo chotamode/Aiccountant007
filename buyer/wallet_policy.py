@@ -53,10 +53,22 @@ CREATE TABLE IF NOT EXISTS paid_documents (
 """
 
 
+class WalletPolicyError(Exception):
+    """A failure of the policy store, not a business outcome (those are Decisions)."""
+
+
+class UnknownDealError(WalletPolicyError):
+    pass
+
+
+class DealTransitionError(WalletPolicyError):
+    pass
+
+
 class DecisionStatus(StrEnum):
-    APPROVED = "approved"
-    BLOCKED = "blocked"
-    HUMAN_APPROVAL_REQUIRED = "human_approval_required"
+    APPROVED = "APPROVED"
+    BLOCKED = "BLOCKED"
+    HUMAN_APPROVAL_REQUIRED = "HUMAN_APPROVAL_REQUIRED"
 
 
 class Reason(StrEnum):
@@ -198,8 +210,19 @@ class WalletPolicy:
         blockchain_identifier: str | None,
         human_approved: bool,
     ) -> Decision:
-        def blocked(reason: Reason, message: str, **extra: list) -> Decision:
-            return Decision(status=DecisionStatus.BLOCKED, reason=reason, message=message, **extra)
+        def blocked(
+            reason: Reason,
+            message: str,
+            violations: Sequence[Reason] = (),
+            duplicates: Sequence[str] = (),
+        ) -> Decision:
+            return Decision(
+                status=DecisionStatus.BLOCKED,
+                reason=reason,
+                message=message,
+                violations=list(violations),
+                duplicate_doc_hashes=list(duplicates),
+            )
 
         known = self._conn.execute("SELECT status FROM deals WHERE deal_id = ?", (deal_id,)).fetchone()
         if known:
@@ -225,24 +248,21 @@ class WalletPolicy:
         is_amount = type(requested_amount) is int
         amount = max(requested_amount, price.amount) if is_amount else price.amount
         spent = self._spent_this_month()
-        problems: list[tuple[Reason, str]] = []
+        violations: list[Reason] = []
+        messages: list[str] = []
         if not is_amount or requested_amount != price.amount:
             asked = self._money(requested_amount) if is_amount else repr(requested_amount)
-            problems.append((Reason.PRICE_MISMATCH, f"asked to pay {asked}, the offer price is {price}"))
+            violations.append(Reason.PRICE_MISMATCH)
+            messages.append(f"asked to pay {asked}, the offer price is {price}")
         if amount > self.max_per_task:
-            problems.append(
-                (Reason.PER_TASK_LIMIT, f"{self._money(amount)} is above the per-task limit {self._money(self.max_per_task)}")
-            )
+            violations.append(Reason.PER_TASK_LIMIT)
+            messages.append(f"{self._money(amount)} is above the per-task limit {self._money(self.max_per_task)}")
         if spent + amount > self.monthly_limit:
-            problems.append(
-                (
-                    Reason.MONTHLY_LIMIT,
-                    f"{self._money(spent)} spent this month, {self._money(amount)} more would exceed "
-                    f"the monthly limit {self._money(self.monthly_limit)}",
-                )
-            )
-        if problems:
-            return blocked(problems[0][0], "; ".join(m for _, m in problems), violations=[r for r, _ in problems])
+            limit = self._money(self.monthly_limit)
+            violations.append(Reason.MONTHLY_LIMIT)
+            messages.append(f"{self._money(spent)} spent this month, {self._money(amount)} more would exceed {limit}")
+        if violations:
+            return blocked(violations[0], "; ".join(messages), violations=violations)
 
         # Pay-once: drop what is already paid or in work, and repeats inside the package.
         held = self._held(hashes)
@@ -255,15 +275,15 @@ class WalletPolicy:
                 payable.append(doc_hash)
         if not payable:
             message = f"all {len(hashes)} documents are already paid or in work"
-            return blocked(Reason.DUPLICATE, message, duplicate_doc_hashes=duplicates)
+            return blocked(Reason.DUPLICATE, message, duplicates=duplicates)
 
-        hashes_out = {"payable_doc_hashes": payable, "duplicate_doc_hashes": duplicates}
         if amount >= self.human_threshold and not human_approved:
             return Decision(
                 status=DecisionStatus.HUMAN_APPROVAL_REQUIRED,
                 reason=Reason.HUMAN_THRESHOLD,
                 message=f"{price} is at or above the human approval threshold {self._money(self.human_threshold)}",
-                **hashes_out,
+                payable_doc_hashes=payable,
+                duplicate_doc_hashes=duplicates,
             )
         return Decision(
             status=DecisionStatus.APPROVED,
@@ -272,7 +292,8 @@ class WalletPolicy:
                 f"{price} to {offer.seller.name} for {len(payable)} documents; "
                 f"{self._money(spent + amount)} of {self._money(self.monthly_limit)} this month"
             ),
-            **hashes_out,
+            payable_doc_hashes=payable,
+            duplicate_doc_hashes=duplicates,
         )
 
     def _write_reservation(
@@ -303,7 +324,7 @@ class WalletPolicy:
                 (doc_hash, deal_id, DealStatus.RESERVED.value, *_HELD),
             )
             if cursor.rowcount != 1:
-                raise RuntimeError(f"document {doc_hash} is held by another deal")
+                raise WalletPolicyError(f"document {doc_hash} is held by another deal")
 
     # --- outcomes ---
 
@@ -325,11 +346,13 @@ class WalletPolicy:
             try:
                 row = self._conn.execute("SELECT status FROM deals WHERE deal_id = ?", (deal_id,)).fetchone()
                 if row is None:
-                    raise KeyError(f"unknown deal {deal_id}")
+                    raise UnknownDealError(f"unknown deal {deal_id}")
                 current = DealStatus(row[0])
                 if current != target:  # repeating a transition is a no-op
                     if current not in allowed:
-                        raise ValueError(f"deal {deal_id} is {current.value}, it cannot become {target.value}")
+                        raise DealTransitionError(
+                            f"deal {deal_id} is {current.value}, it cannot become {target.value}"
+                        )
                     self._conn.execute(
                         "UPDATE deals SET status = ?, updated_at = ? WHERE deal_id = ?",
                         (target.value, self._timestamp(self._now()), deal_id),

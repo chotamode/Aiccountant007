@@ -12,7 +12,14 @@ from datetime import UTC, datetime
 
 import pytest
 
-from buyer.wallet_policy import DealStatus, DecisionStatus, Reason, WalletPolicy
+from buyer.wallet_policy import (
+    DealStatus,
+    DealTransitionError,
+    DecisionStatus,
+    Reason,
+    UnknownDealError,
+    WalletPolicy,
+)
 from common.market import Offer, Price, PriceUnit, Seller, SellerKind
 
 ADA = 1_000_000
@@ -179,11 +186,11 @@ def test_release_frees_documents_only_before_payment(policy):
     assert policy.spent_this_month() == 0
     assert policy.reserve("d2", offer(), 3 * ADA, docs("a")).approved
     policy.mark_paid("d2")
-    with pytest.raises(ValueError):
+    with pytest.raises(DealTransitionError):
         policy.release("d2")
-    with pytest.raises(ValueError):
+    with pytest.raises(DealTransitionError):
         policy.mark_paid("d1")  # released stays released
-    with pytest.raises(KeyError):
+    with pytest.raises(UnknownDealError):
         policy.mark_paid("unknown")
     assert policy.deal_status("d2") == DealStatus.PAID
 
