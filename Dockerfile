@@ -22,4 +22,4 @@ USER appuser
 
 EXPOSE 8000 8001 8002
 
-CMD ["python", "-m", "seller.app"]
+CMD ["python", "-m", "buyer.dashboard.app"]

@@ -93,3 +93,29 @@ def test_dashboard_voice_static():
     assert resp.status_code == 200
     assert resp.headers["content-type"] in ("audio/mpeg", "audio/mp3", "application/octet-stream")
 
+
+def test_landing_and_docs_endpoints():
+    app = create_dashboard_app()
+    client = TestClient(app)
+
+    # Test landing page
+    resp_landing = client.get("/landing")
+    assert resp_landing.status_code == 200
+    assert "Aiccountant007" in resp_landing.text
+    assert "B2B AI Agents Trade" in resp_landing.text
+
+    # Test wiki
+    resp_wiki = client.get("/wiki/")
+    assert resp_wiki.status_code == 200
+    assert "Aiccountant007" in resp_wiki.text
+
+    # Test presentation
+    resp_deck = client.get("/presentation/")
+    assert resp_deck.status_code == 200
+    assert "Aiccountant007 Pitch Deck" in resp_deck.text
+
+    # Test api run-scenario dispatch
+    resp_api = client.post("/api/run-scenario?scenario=demo")
+    assert resp_api.status_code == 200
+    assert resp_api.json()["status"] == "dispatched"
+

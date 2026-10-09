@@ -3,217 +3,669 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aiccountant007 · Agentic Accounting & Escrow Dashboard</title>
+  <title>Aiccountant007 · Forensic Escrow & Auditing Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0f172a;
-      --card-bg: #1e293b;
-      --border: #334155;
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
-      --primary: #38bdf8;
-      --success: #34d399;
-      --warning: #fbbf24;
-      --danger: #f87171;
-      --buyer-color: #60a5fa;
-      --seller-color: #4ade80;
+      --bg: oklch(0.12 0.015 260);
+      --surface: oklch(0.17 0.018 260);
+      --surface-elevated: oklch(0.22 0.022 260);
+      --border: oklch(0.28 0.025 260);
+      --border-subtle: oklch(0.22 0.018 260);
+      --border-focus: oklch(0.60 0.18 250);
+
+      --ink: oklch(0.96 0.005 260);
+      --ink-muted: oklch(0.70 0.02 260);
+      --ink-faint: oklch(0.50 0.02 260);
+
+      --primary: oklch(0.62 0.19 250);
+      --primary-hover: oklch(0.68 0.21 250);
+      --primary-ink: oklch(0.98 0.005 260);
+
+      --success: oklch(0.68 0.18 155);
+      --success-bg: oklch(0.20 0.05 155);
+      --warning: oklch(0.72 0.17 75);
+      --warning-bg: oklch(0.22 0.05 75);
+      --danger: oklch(0.60 0.22 25);
+      --danger-bg: oklch(0.20 0.06 25);
+
+      --buyer-actor: oklch(0.65 0.16 230);
+      --buyer-bg: oklch(0.20 0.04 230);
+      --seller-actor: oklch(0.70 0.16 140);
+      --seller-bg: oklch(0.20 0.04 140);
+
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Roboto, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: var(--bg);
-      color: var(--text);
+      background-color: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-sans);
+      font-size: 0.9375rem;
       line-height: 1.5;
-      padding: 24px;
+      -webkit-font-smoothing: antialiased;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
     }
+
+    /* Header */
     header {
+      background-color: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding-bottom: 20px;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 24px;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
     }
-    h1 { font-size: 1.5rem; display: flex; align-items: center; gap: 10px; }
-    .status-badge {
-      font-size: 0.85rem;
-      padding: 4px 10px;
-      border-radius: 9999px;
-      background: #064e3b;
-      color: var(--success);
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-tag {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--ink-faint);
+      padding: 2px 6px;
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+    }
+
+    .nav-bar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .nav-item {
+      color: var(--ink-muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+
+    .nav-item:hover, .nav-item.active {
+      color: var(--ink);
+    }
+    .nav-item.active {
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .controls-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.15s ease-in-out;
+      font-family: var(--font-sans);
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background-color: var(--primary);
+      color: var(--primary-ink);
+    }
+    .btn-primary:hover {
+      background-color: var(--primary-hover);
+    }
+
+    .btn-outline {
+      background-color: var(--surface-elevated);
+      color: var(--ink);
+      border-color: var(--border);
+    }
+    .btn-outline:hover {
+      border-color: var(--border-focus);
+      color: var(--ink);
+    }
+
+    .btn-danger {
+      background-color: var(--danger-bg);
+      color: var(--danger);
+      border-color: var(--danger);
+    }
+
+    .btn-success {
+      background-color: var(--success);
+      color: var(--primary-ink);
+    }
+
+    .status-pill {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-    }
-    .status-badge.live::before {
-      content: "";
-      width: 8px;
-      height: 8px;
-      background: var(--success);
-      border-radius: 50%;
-      animation: pulse 1.5s infinite;
-    }
-    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
-    .container {
-      display: grid;
-      grid-template-columns: 320px 1fr;
-      gap: 24px;
-    }
-    @media (max-width: 900px) {
-      .container { grid-template-columns: 1fr; }
-    }
-    .panel {
-      background: var(--card-bg);
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 500;
+      background: var(--surface-elevated);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 20px;
-      overflow: hidden;
+      color: var(--ink-muted);
     }
-    .panel h2 {
-      font-size: 1.1rem;
-      margin-bottom: 16px;
-      color: var(--text-muted);
+
+    .status-pill.connected {
+      color: var(--success);
+      border-color: var(--success);
+      background: var(--success-bg);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    /* Action bar / Workbench */
+    .workbench-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .workbench-left {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .workbench-label {
+      font-size: 0.8125rem;
+      color: var(--ink-faint);
+      font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.05em;
+      margin-right: 4px;
     }
-    .deals-list {
+
+    /* Approval alert banner if deal requires action */
+    #approval-banner {
+      display: none;
+      background: var(--warning-bg);
+      border-bottom: 1px solid var(--warning);
+      padding: 12px 24px;
+      color: var(--warning);
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+
+    /* Main Console Layout */
+    .console-layout {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    @media (max-width: 900px) {
+      .console-layout { grid-template-columns: 1fr; }
+    }
+
+    /* Left panel: Deals list & Policies */
+    .left-panel {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      height: calc(100vh - 120px);
+      overflow-y: auto;
     }
-    .deal-card {
-      background: #0f172a80;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 12px;
-      cursor: pointer;
-      transition: border-color 0.2s;
-    }
-    .deal-card:hover, .deal-card.active {
-      border-color: var(--primary);
-    }
-    .deal-header {
+
+    .panel-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
       display: flex;
       justify-content: space-between;
+      align-items: center;
+      background: var(--surface);
+    }
+
+    .panel-title {
+      font-size: 0.875rem;
+      font-weight: 700;
+      color: var(--ink);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .deals-list {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .deal-card {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px 14px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .deal-card:hover {
+      border-color: var(--border-focus);
+    }
+
+    .deal-card.active {
+      border-color: var(--primary);
+      background: oklch(0.20 0.02 250);
+    }
+
+    .deal-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .deal-id {
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
       font-weight: 600;
+      color: var(--ink);
+    }
+
+    .deal-badge {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .deal-badge.paid { background: var(--success-bg); color: var(--success); border: 1px solid var(--success); }
+    .deal-badge.refunded { background: var(--warning-bg); color: var(--warning); border: 1px solid var(--warning); }
+    .deal-badge.blocked { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger); }
+    .deal-badge.pending { background: var(--surface); color: var(--ink-muted); border: 1px solid var(--border); }
+
+    .deal-title {
+      font-size: 0.875rem;
+      color: var(--ink-muted);
+      margin-bottom: 8px;
+      line-height: 1.35;
+    }
+
+    .deal-meta-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      color: var(--ink-faint);
+    }
+
+    /* Policy status card in sidebar footer */
+    .policy-summary {
+      padding: 14px 18px;
+      border-top: 1px solid var(--border);
+      background: var(--bg);
+      font-size: 0.8125rem;
+    }
+
+    .policy-summary-title {
+      font-weight: 600;
+      color: var(--ink-muted);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+    }
+
+    .policy-stat-row {
+      display: flex;
+      justify-content: space-between;
       margin-bottom: 4px;
-      font-size: 0.95rem;
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
     }
-    .deal-meta {
-      font-size: 0.8rem;
-      color: var(--text-muted);
+
+    /* Right panel: Live Event Stream */
+    .right-panel {
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 120px);
+      overflow: hidden;
     }
+
+    .feed-controls {
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .filter-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .filter-btn {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      color: var(--ink-muted);
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .filter-btn.active {
+      background: var(--primary);
+      color: var(--primary-ink);
+      border-color: var(--primary);
+    }
+
     .events-feed {
+      padding: 20px 24px;
       display: flex;
       flex-direction: column;
       gap: 12px;
-      max-height: calc(100vh - 160px);
       overflow-y: auto;
-      padding-right: 8px;
+      flex: 1;
     }
+
+    /* Event items - NO SIDE-STRIPES */
     .event-item {
-      background: #0f172a60;
+      background: var(--surface);
       border: 1px solid var(--border);
-      border-left: 4px solid var(--primary);
       border-radius: 6px;
-      padding: 12px 16px;
+      padding: 14px 16px;
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      animation: fadeIn 0.3s ease-in-out;
+      gap: 8px;
+      transition: border-color 0.15s;
     }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
-    .event-item.actor-buyer { border-left-color: var(--buyer-color); }
-    .event-item.actor-seller { border-left-color: var(--seller-color); }
-    .event-item.type-verification_failed, .event-item.type-policy_blocked { border-left-color: var(--danger); }
-    .event-item.type-verification_passed { border-left-color: var(--success); }
+
+    .event-item:hover {
+      border-color: var(--border-focus);
+    }
+
+    .event-item.type-verification_failed, .event-item.type-policy_blocked {
+      border-color: oklch(0.35 0.10 25);
+      background: oklch(0.14 0.02 25);
+    }
+
+    .event-item.type-verification_passed {
+      border-color: oklch(0.35 0.08 155);
+      background: oklch(0.14 0.02 155);
+    }
+
     .event-top {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 0.8rem;
-      color: var(--text-muted);
+      gap: 8px;
     }
-    .event-badges {
+
+    .event-tags {
       display: flex;
-      gap: 6px;
       align-items: center;
+      gap: 8px;
     }
-    .badge {
-      font-size: 0.7rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      padding: 2px 6px;
+
+    .actor-pill {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      font-weight: 600;
+      padding: 2px 8px;
       border-radius: 4px;
-      background: var(--border);
-      color: var(--text);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
     }
-    .badge.simulated {
-      background: #78350f;
+
+    .actor-pill.buyer {
+      background: var(--buyer-bg);
+      color: var(--buyer-actor);
+      border: 1px solid var(--buyer-actor);
+    }
+
+    .actor-pill.seller {
+      background: var(--seller-bg);
+      color: var(--seller-actor);
+      border: 1px solid var(--seller-actor);
+    }
+
+    .type-pill {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      color: var(--ink-faint);
+    }
+
+    .badge-simulated {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      font-weight: 600;
+      background: var(--warning-bg);
       color: var(--warning);
       border: 1px solid var(--warning);
+      padding: 2px 6px;
+      border-radius: 4px;
     }
-    .badge.buyer { background: #1e3a8a; color: var(--buyer-color); }
-    .badge.seller { background: #064e3b; color: var(--seller-color); }
+
+    .event-time {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--ink-faint);
+      font-variant-numeric: tabular-nums;
+    }
+
     .event-msg {
-      font-size: 0.95rem;
-      color: var(--text);
-      word-break: break-word;
+      font-size: 0.9375rem;
+      color: var(--ink);
+      line-height: 1.45;
     }
-    .event-footer {
+
+    .event-bottom {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-top: 4px;
+      padding-top: 6px;
+      border-top: 1px solid var(--border-subtle);
+      font-size: 0.8125rem;
     }
+
     .tx-link {
-      font-size: 0.8rem;
+      font-family: var(--font-mono);
       color: var(--primary);
       text-decoration: none;
       display: inline-flex;
       align-items: center;
       gap: 4px;
+      font-size: 0.75rem;
     }
+
     .tx-link:hover { text-decoration: underline; }
-    .btn-approve {
-      background: var(--primary);
-      color: #0f172a;
-      border: none;
-      border-radius: 4px;
-      padding: 6px 14px;
-      font-weight: 600;
-      font-size: 0.85rem;
-      cursor: pointer;
-      transition: background 0.2s;
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--ink-muted);
     }
-    .btn-approve:hover {
-      background: #7dd3fc;
+
+    .empty-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--ink);
+      margin-bottom: 8px;
     }
   </style>
 </head>
 <body>
+
+  <!-- Top App Navigation -->
   <header>
-    <h1>
-      <span>🛡️ Aiccountant007</span>
-      <span style="font-size: 0.9rem; font-weight: normal; color: var(--text-muted);">Autonomous Auditing & Cardano Escrow</span>
-    </h1>
-    <div style="display: flex; align-items: center; gap: 12px;">
-      <button id="voice-toggle" onclick="toggleVoice()" style="background: #1e293b; border: 1px solid var(--border); color: var(--text); padding: 4px 12px; border-radius: 9999px; cursor: pointer; font-size: 0.85rem;">🔊 Voice: ON</button>
-      <div class="status-badge live" id="connection-status">Live Connected</div>
+    <div class="brand-section">
+      <div class="brand-title">
+        <span>🛡️ Aiccountant007</span>
+      </div>
+      <div class="brand-tag">Cardano Escrow Console</div>
+    </div>
+
+    <nav class="nav-bar">
+      <a href="/" class="nav-item">Product Overview</a>
+      <a href="/dashboard" class="nav-item active">Live Console</a>
+      <a href="/wiki" class="nav-item">Wiki & Specs</a>
+      <a href="/presentation" class="nav-item">Pitch Deck</a>
+    </nav>
+
+    <div class="controls-group">
+      <button class="btn btn-outline" id="voice-toggle" onclick="toggleVoice()">🔊 Voice: ON</button>
+      <div class="status-pill connected" id="connection-status">
+        <span class="status-dot"></span>
+        <span id="conn-text">Live Connected</span>
+      </div>
     </div>
   </header>
 
-  <div class="container">
-    <div class="panel">
-      <h2>Deals</h2>
+  <!-- Interactive Workbench Toolbar -->
+  <div class="workbench-bar">
+    <div class="workbench-left">
+      <span class="workbench-label">Operator Actions:</span>
+      <button class="btn btn-primary" onclick="runScenario('demo')" id="btn-run-demo">
+        ⚡ Run Full 6-Phase Pipeline
+      </button>
+      <button class="btn btn-outline" onclick="runScenario('honest')" title="Run clean firm verification">
+        🟢 Honest Audit
+      </button>
+      <button class="btn btn-outline" onclick="runScenario('sloppy')" title="Catch VAT error and auto-refund">
+        🔴 VAT Dispute
+      </button>
+      <button class="btn btn-outline" onclick="runScenario('injection')" title="Simulate 10x pay prompt attack">
+        🛡️ Injection Defense
+      </button>
+      <button class="btn btn-outline" onclick="runScenario('duplicate')" title="Test duplicate resubmit rejection">
+        🔒 Duplicate Block
+      </button>
+    </div>
+
+    <div style="font-family: var(--font-mono); font-size: 0.8125rem; color: var(--ink-faint);">
+      Node: <span style="color: var(--primary);">:3001</span> · Payment: <span style="color: var(--success);" id="payment-mode-label">Cardano Preprod</span>
+    </div>
+  </div>
+
+  <!-- Human Approval Banner (Shown if a deal pauses on threshold) -->
+  <div id="approval-banner">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <span style="font-size: 1.2rem;">⏸️</span>
+      <div>
+        <strong id="approval-title">Human Approval Required</strong>
+        <div style="font-size: 0.8125rem; opacity: 0.9;" id="approval-sub">Transaction amount exceeds policy threshold (15 ₳).</div>
+      </div>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <button class="btn btn-success" id="btn-approve" onclick="approveCurrentDeal()">✓ Approve Escrow Release</button>
+      <button class="btn btn-danger" onclick="dismissApproval()">Dismiss</button>
+    </div>
+  </div>
+
+  <!-- Main Console Layout -->
+  <div class="console-layout">
+    <!-- Left Panel: Deals & Wallet Policy -->
+    <div class="left-panel">
+      <div class="panel-header">
+        <span class="panel-title">Tracked Deals</span>
+        <span class="status-pill" id="deal-count-pill">0 deals</span>
+      </div>
+
       <div class="deals-list" id="deals-list">
-        <div style="color: var(--text-muted); font-size: 0.9rem;">Waiting for transactions...</div>
+        <div class="empty-state">
+          <div class="empty-title">No transactions yet</div>
+          <p style="font-size: 0.8125rem;">Click "Run Full 6-Phase Pipeline" above to execute the live scenario.</p>
+        </div>
+      </div>
+
+      <!-- Policy Limits Ledger -->
+      <div class="policy-summary">
+        <div class="policy-summary-title">Wallet Policy Constraints</div>
+        <div class="policy-stat-row">
+          <span style="color: var(--ink-faint);">Monthly Cap:</span>
+          <span style="color: var(--ink);">30.00 ₳</span>
+        </div>
+        <div class="policy-stat-row">
+          <span style="color: var(--ink-faint);">Per-Task Limit:</span>
+          <span style="color: var(--ink);">10.00 ₳</span>
+        </div>
+        <div class="policy-stat-row">
+          <span style="color: var(--ink-faint);">Human Threshold:</span>
+          <span style="color: var(--warning);">15.00 ₳</span>
+        </div>
+        <div class="policy-stat-row">
+          <span style="color: var(--ink-faint);">Byte Hasher:</span>
+          <span style="color: var(--primary);">sha256 (active)</span>
+        </div>
       </div>
     </div>
 
-    <div class="panel">
-      <h2>Live Event Stream</h2>
-      <div class="events-feed" id="events-feed"></div>
+    <!-- Right Panel: Live Forensic Event Stream -->
+    <div class="right-panel">
+      <div class="feed-controls">
+        <div style="font-size: 0.875rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">
+          Live Event Stream
+        </div>
+        <div class="filter-group">
+          <button class="filter-btn active" onclick="setFilter('all')">All</button>
+          <button class="filter-btn" onclick="setFilter('escrow')">Escrow</button>
+          <button class="filter-btn" onclick="setFilter('verification')">Audit</button>
+          <button class="filter-btn" onclick="setFilter('dispute')">Disputes</button>
+        </div>
+      </div>
+
+      <div class="events-feed" id="events-feed">
+        <!-- Live events injected here via SSE -->
+      </div>
     </div>
   </div>
 
@@ -221,8 +673,13 @@
     const eventsFeed = document.getElementById("events-feed");
     const dealsList = document.getElementById("deals-list");
     const connectionStatus = document.getElementById("connection-status");
+    const approvalBanner = document.getElementById("approval-banner");
 
     let voiceEnabled = true;
+    let dealsMap = new Map();
+    let currentFilter = 'all';
+    let activeApprovalDealId = null;
+
     function toggleVoice() {
       voiceEnabled = !voiceEnabled;
       const btn = document.getElementById("voice-toggle");
@@ -239,159 +696,220 @@
       "refund_withdrawn": "/voice/07_refund_settled.mp3"
     };
 
-    function playAudioForEvent(evType) {
+    function playAudio(evType) {
       if (!voiceEnabled) return;
       const src = audioMap[evType];
       if (src) {
         try {
           const snd = new Audio(src);
           snd.volume = 0.7;
-          snd.play().catch(e => console.log("Voice alert prevented:", e));
+          snd.play().catch(e => console.log("Voice autoplay handled:", e));
         } catch (e) {}
       }
     }
 
-    const deals = new Map();
-    let activeDealFilter = null;
+    async function runScenario(scenarioType) {
+      const btn = document.getElementById("btn-run-demo");
+      const origText = btn.innerText;
+      btn.innerText = "⏳ Dispatching...";
+      btn.disabled = true;
 
-    function renderDeals() {
-      if (deals.size === 0) return;
-      dealsList.innerHTML = "";
-
-      const allBtn = document.createElement("div");
-      allBtn.className = "deal-card" + (activeDealFilter === null ? " active" : "");
-      allBtn.innerHTML = `
-        <div class="deal-header"><span>All Deals</span><span>${deals.size}</span></div>
-        <div class="deal-meta">Show all events feed</div>
-      `;
-      allBtn.onclick = () => { activeDealFilter = null; renderDeals(); filterEvents(); };
-      dealsList.appendChild(allBtn);
-
-      for (const [dealId, deal] of deals.entries()) {
-        const card = document.createElement("div");
-        card.className = "deal-card" + (activeDealFilter === dealId ? " active" : "");
-        card.innerHTML = `
-          <div class="deal-header">
-            <span>#${dealId.slice(0, 8)}</span>
-            <span style="font-size: 0.8rem; color: var(--text-muted);">${deal.events.length} ev</span>
-          </div>
-          <div class="deal-meta">${deal.lastMsg.slice(0, 45)}...</div>
-        `;
-        card.onclick = () => { activeDealFilter = dealId; renderDeals(); filterEvents(); };
-        dealsList.appendChild(card);
+      try {
+        const resp = await fetch(`/api/run-scenario?scenario=${encodeURIComponent(scenarioType)}`, {
+          method: "POST"
+        });
+        const res = await resp.json();
+        console.log("Scenario dispatched:", res);
+      } catch (err) {
+        console.error("Run scenario error:", err);
+      } finally {
+        setTimeout(() => {
+          btn.innerText = origText;
+          btn.disabled = false;
+        }, 1200);
       }
     }
 
+    async function approveCurrentDeal() {
+      if (!activeApprovalDealId) return;
+      try {
+        await fetch(`/approve/${encodeURIComponent(activeApprovalDealId)}`, { method: "POST" });
+        approvalBanner.style.display = "none";
+        activeApprovalDealId = null;
+      } catch (e) {
+        alert("Failed to approve deal: " + e);
+      }
+    }
+
+    function dismissApproval() {
+      approvalBanner.style.display = "none";
+    }
+
+    function setFilter(filter) {
+      currentFilter = filter;
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+      filterEvents();
+    }
+
     function filterEvents() {
-      const items = eventsFeed.querySelectorAll(".event-item");
-      items.forEach(item => {
-        const dealId = item.dataset.dealId;
-        if (!activeDealFilter || dealId === activeDealFilter) {
-          item.style.display = "flex";
+      const items = document.querySelectorAll('.event-item');
+      items.forEach(el => {
+        const type = el.getAttribute('data-type') || '';
+        if (currentFilter === 'all') {
+          el.style.display = 'flex';
+        } else if (currentFilter === 'escrow' && type.includes('escrow')) {
+          el.style.display = 'flex';
+        } else if (currentFilter === 'verification' && type.includes('verification')) {
+          el.style.display = 'flex';
+        } else if (currentFilter === 'dispute' && (type.includes('failed') || type.includes('refund') || type.includes('blocked'))) {
+          el.style.display = 'flex';
         } else {
-          item.style.display = "none";
+          el.style.display = 'none';
         }
       });
     }
 
-    async function sendApproval(dealId, btn) {
-      btn.disabled = true;
-      btn.innerText = "Approving...";
-      try {
-        const res = await fetch(`/approve/${dealId}`, { method: "POST" });
-        if (res.ok) {
-          btn.innerText = "Approved ✓";
-        } else {
-          btn.innerText = "Error ✗";
-        }
-      } catch (err) {
-        btn.innerText = "Error ✗";
-      }
-    }
+    function handleEvent(ev) {
+      const actor = (ev.actor || "SYSTEM").toLowerCase();
+      const evType = (ev.type || "INFO").toLowerCase();
+      const dealId = ev.deal_id || null;
+      const timestamp = new Date().toLocaleTimeString();
 
-    function addEvent(ev) {
-      if (ev.deal_id) {
-        if (!deals.has(ev.deal_id)) {
-          deals.set(ev.deal_id, { events: [], lastMsg: ev.msg });
+      // Audio notification
+      playAudio(evType);
+
+      // Track deals
+      if (dealId) {
+        if (!dealsMap.has(dealId)) {
+          dealsMap.set(dealId, {
+            id: dealId,
+            events: [],
+            status: "pending",
+            title: ev.msg || "Autonomous Deal " + dealId,
+            simulated: ev.simulated
+          });
         }
-        const d = deals.get(ev.deal_id);
-        d.events.push(ev);
-        d.lastMsg = ev.msg;
-        renderDeals();
+        const deal = dealsMap.get(dealId);
+        deal.events.push(ev);
+
+        if (evType.includes("paid") || evType.includes("released")) deal.status = "paid";
+        else if (evType.includes("refund")) deal.status = "refunded";
+        else if (evType.includes("blocked")) deal.status = "blocked";
+
+        updateDealsUI();
       }
 
+      // Check human approval
+      if (evType === "human_approval_required") {
+        activeApprovalDealId = dealId;
+        document.getElementById("approval-title").innerText = `Deal ${dealId}: Human Approval Required`;
+        document.getElementById("approval-sub").innerText = ev.msg;
+        approvalBanner.style.display = "flex";
+      }
+
+      // Render Event Item
       const item = document.createElement("div");
-      item.className = `event-item actor-${ev.actor} type-${ev.type}`;
-      item.dataset.dealId = ev.deal_id || "";
+      item.className = `event-item type-${evType}`;
+      item.setAttribute("data-type", evType);
 
-      if (activeDealFilter && ev.deal_id !== activeDealFilter) {
-        item.style.display = "none";
-      }
-
-      const time = new Date(ev.ts).toLocaleTimeString();
-      let badgesHtml = `<span class="badge ${ev.actor}">${ev.actor}</span>`;
+      let badgesHtml = `<span class="actor-pill ${actor}">${actor}</span>`;
+      badgesHtml += `<span class="type-pill">${ev.type || ""}</span>`;
       if (ev.simulated) {
-        badgesHtml += `<span class="badge simulated">SIMULATED</span>`;
+        badgesHtml += `<span class="badge-simulated">SIMULATED</span>`;
       }
 
       let footerHtml = "";
-      if (ev.tx_url) {
-        footerHtml += `<a class="tx-link" href="${ev.tx_url}" target="_blank">🔗 Blockchain Tx</a>`;
-      }
-      if (ev.type === "human_approval_required" && ev.deal_id) {
-        footerHtml += `<button class="btn-approve" onclick="sendApproval('${ev.deal_id}', this)">Approve Payment</button>`;
+      if (dealId || ev.tx_url) {
+        footerHtml = `
+          <div class="event-bottom">
+            <span>${dealId ? `Deal: <code>${dealId}</code>` : ''}</span>
+            ${ev.tx_url ? `<a href="${ev.tx_url}" target="_blank" rel="noreferrer" class="tx-link">Explorer tx ↗</a>` : ''}
+          </div>
+        `;
       }
 
       item.innerHTML = `
         <div class="event-top">
-          <div class="event-badges">${badgesHtml}</div>
-          <span>${time}</span>
+          <div class="event-tags">${badgesHtml}</div>
+          <div class="event-time">${timestamp}</div>
         </div>
-        <div class="event-msg">${ev.msg}</div>
-        ${footerHtml ? `<div class="event-footer">${footerHtml}</div>` : ""}
+        <div class="event-msg">${ev.msg || ""}</div>
+        ${footerHtml}
       `;
 
       eventsFeed.insertBefore(item, eventsFeed.firstChild);
-      playAudioForEvent(ev.type);
+      filterEvents();
     }
 
-    const eventSource = new EventSource("/events");
-    eventSource.onopen = () => {
-      connectionStatus.innerText = "Live Connected";
-      connectionStatus.className = "status-badge live";
-    };
-    eventSource.onerror = () => {
-      connectionStatus.innerText = "Disconnected";
-      connectionStatus.className = "status-badge";
-    };
+    function updateDealsUI() {
+      document.getElementById("deal-count-pill").innerText = `${dealsMap.size} deals`;
+      if (dealsMap.size === 0) return;
 
-    // Listen to all standard and custom event types
-    eventSource.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        addEvent(data);
-      } catch (err) {
-        console.error(err);
+      dealsList.innerHTML = "";
+      for (const [id, deal] of dealsMap.entries()) {
+        const card = document.createElement("div");
+        card.className = "deal-card";
+        card.innerHTML = `
+          <div class="deal-card-top">
+            <span class="deal-id">${id}</span>
+            <span class="deal-badge ${deal.status}">${deal.status}</span>
+          </div>
+          <div class="deal-title">${deal.title}</div>
+          <div class="deal-meta-row">
+            <span>Events: ${deal.events.length}</span>
+            <span>${deal.simulated ? 'SIMULATED' : 'CARDANO'}</span>
+          </div>
+        `;
+        dealsList.appendChild(card);
       }
-    };
+    }
 
-    // Generic handler for named event types
-    const eventTypes = [
-      "discovery_started", "offer_found", "seller_selected",
-      "docs_hashed", "job_started", "policy_approved", "policy_blocked",
-      "duplicate_blocked", "human_approval_required", "human_approved",
-      "escrow_locked", "result_submitted", "payment_released",
-      "refund_requested", "refund_authorized", "refund_withdrawn",
-      "ocr_paid", "job_completed", "verification_passed", "verification_failed",
-      "reputation_updated", "error"
-    ];
-    eventTypes.forEach(t => {
-      eventSource.addEventListener(t, (e) => {
+    // Connect to SSE stream
+    function initSSE() {
+      const source = new EventSource("/events");
+
+      source.onopen = () => {
+        connectionStatus.className = "status-pill connected";
+        document.getElementById("conn-text").innerText = "Live Connected";
+      };
+
+      source.onerror = () => {
+        connectionStatus.className = "status-pill";
+        document.getElementById("conn-text").innerText = "Reconnecting...";
+      };
+
+      source.onmessage = (event) => {
         try {
-          addEvent(JSON.parse(e.data));
-        } catch (err) {}
+          const ev = JSON.parse(event.data);
+          handleEvent(ev);
+        } catch (e) {
+          console.error("SSE parse error:", e);
+        }
+      };
+
+      const eventTypes = [
+        "discovery_started", "offer_found", "seller_selected",
+        "docs_hashed", "job_started", "policy_approved", "policy_blocked",
+        "duplicate_blocked", "human_approval_required", "human_approved",
+        "escrow_locked", "result_submitted", "payment_released",
+        "refund_requested", "refund_authorized", "refund_withdrawn",
+        "ocr_paid", "job_completed", "verification_passed", "verification_failed",
+        "reputation_updated", "error"
+      ];
+
+      eventTypes.forEach(t => {
+        source.addEventListener(t, (e) => {
+          try {
+            handleEvent(JSON.parse(e.data));
+          } catch (err) {
+            console.error("Named SSE event error:", err);
+          }
+        });
       });
-    });
+    }
+
+    document.addEventListener("DOMContentLoaded", initSSE);
   </script>
 </body>
 </html>
