@@ -26,4 +26,8 @@
 3. **Дашборд** (`buyer/dashboard/*`): C5. В реальном режиме `policy.sqlite` не пересоздавать на каждый клик. Одновременно только один сценарий (409). Убрать XSS.
 4. **Инфраструктура и документы:** C6, новые переменные в `.env.example`, `docker compose config -q`. Пометить SIMULATED в RUNLOG §2 и на лендинге. Убрать префикс ключа Blockfrost из wiki 08. `scripts/deploy_wiki.sh` не должен печатать токен. Скрипты `scripts/masumi_check.py` и `scripts/masumi_register.py`. Runbook `docs/MASUMI_INTEGRATION.md`.
 
+## Регистрация и Sokosumi
+
+Путь по документации Masumi: нода → агент по MIP-003 → регистрация в реестре Masumi (`agentIdentifier`) → пополнить кошельки → листинг в Sokosumi (app.sokosumi.com: эндпоинт, описание, цена, input schema). Сделка из Sokosumi платится через эскроу Masumi на нашу selling-ноду, поэтому без задачи 1 она не пройдёт. Preprod API Sokosumi: `https://api.preprod.sokosumi.com/v1` (ключ передаётся как Bearer). Проверить, в чём Sokosumi принимает цену (lovelace, USDM или кредиты): она должна совпадать с `FIRM_PRICE_LOVELACE`. Для реестра и для Sokosumi нужны публичные HTTPS-адреса продавцов: в Coolify `https://proucetni.tzhk.dev:8001` и `https://cheapbooks.tzhk.dev:8002`, потому что образ открывает порты 8000–8002.
+
 Точные поля API брать из исходников `masumi-network/masumi-payment-service` (`src/routes/api/...`) и из swagger своей ноды (`:3001/docs`).
