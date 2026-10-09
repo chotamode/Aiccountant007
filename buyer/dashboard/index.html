@@ -660,6 +660,7 @@
           <button class="filter-btn" onclick="setFilter('escrow')">Escrow</button>
           <button class="filter-btn" onclick="setFilter('verification')">Audit</button>
           <button class="filter-btn" onclick="setFilter('dispute')">Disputes</button>
+          <button class="filter-btn" onclick="clearFeed()" title="Clear screen">🗑️ Clear</button>
         </div>
       </div>
 
@@ -708,11 +709,13 @@
       }
     }
 
-    async function runScenario(scenarioType) {
-      const btn = document.getElementById("btn-run-demo");
-      const origText = btn.innerText;
-      btn.innerText = "⏳ Dispatching...";
-      btn.disabled = true;
+    async function runScenario(scenarioType, evt) {
+      const btn = (evt && evt.currentTarget) ? evt.currentTarget : (event ? event.currentTarget : document.getElementById("btn-run-demo"));
+      const origText = btn ? btn.innerText : "";
+      if (btn) {
+        btn.innerText = "⏳ Dispatching...";
+        btn.disabled = true;
+      }
 
       try {
         const resp = await fetch(`/api/run-scenario?scenario=${encodeURIComponent(scenarioType)}`, {
@@ -723,11 +726,19 @@
       } catch (err) {
         console.error("Run scenario error:", err);
       } finally {
-        setTimeout(() => {
-          btn.innerText = origText;
-          btn.disabled = false;
-        }, 1200);
+        if (btn) {
+          setTimeout(() => {
+            btn.innerText = origText;
+            btn.disabled = false;
+          }, 1200);
+        }
       }
+    }
+
+    function clearFeed() {
+      eventsFeed.innerHTML = "";
+      dealsMap.clear();
+      updateDealsUI();
     }
 
     async function approveCurrentDeal() {
@@ -909,7 +920,28 @@
       });
     }
 
-    document.addEventListener("DOMContentLoaded", initSSE);
+    async function loadHistory() {
+      const prevVoice = voiceEnabled;
+      voiceEnabled = false; // Mute voice during history preload
+      try {
+        const resp = await fetch("/history");
+        if (resp.ok) {
+          const events = await resp.json();
+          if (Array.isArray(events) && events.length > 0) {
+            events.forEach(handleEvent);
+          }
+        }
+      } catch (err) {
+        console.error("Load history error:", err);
+      } finally {
+        voiceEnabled = prevVoice;
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      await loadHistory();
+      initSSE();
+    });
   </script>
 </body>
 </html>

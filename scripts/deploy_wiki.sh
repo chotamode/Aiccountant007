@@ -6,7 +6,12 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WIKI_DIR="$DIR/docs/wiki"
 TMP_WIKI="/tmp/aiccountant007_wiki"
 
-WIKI_REMOTE="git@github.com:chotamode/Aiccountant007.wiki.git"
+TOKEN=$(gh auth token 2>/dev/null || echo "")
+if [ -n "$TOKEN" ]; then
+  WIKI_REMOTE="https://x-access-token:${TOKEN}@github.com/chotamode/Aiccountant007.wiki.git"
+else
+  WIKI_REMOTE="https://github.com/chotamode/Aiccountant007.wiki.git"
+fi
 
 echo "==> Preparing GitHub Wiki deployment..."
 rm -rf "$TMP_WIKI"

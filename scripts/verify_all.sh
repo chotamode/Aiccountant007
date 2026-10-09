@@ -16,6 +16,12 @@ echo -e "${BOLD}${BLUE}🛡️  Aiccountant007 - Comprehensive System Health Ver
 echo -e "${BOLD}${BLUE}============================================================${NC}"
 echo ""
 
+# Blockfrost key comes from .env (BLOCKFROST_API_KEY_PREPROD), never hardcoded.
+if [ -z "${BLOCKFROST_API_KEY_PREPROD:-}" ] && [ -f .env ]; then
+    BLOCKFROST_API_KEY_PREPROD=$(grep -E '^BLOCKFROST_API_KEY_PREPROD=' .env | head -n 1 | cut -d= -f2- | tr -d '"\r')
+fi
+BLOCKFROST_API_KEY_PREPROD="${BLOCKFROST_API_KEY_PREPROD:-}"
+
 PASS_COUNT=0
 TOTAL_COUNT=7
 
@@ -67,7 +73,7 @@ fi
 
 # 5. Blockfrost Cardano Preprod Health
 echo -e "${BOLD}5. Checking Cardano Preprod Blockfrost Gateway...${NC}"
-BF_HEALTH=$(curl -s -H "project_id: preprodMoN7D7zVTIrJwtqa0BKHYzTeZUVlVn3G" https://cardano-preprod.blockfrost.io/api/v0/health 2>/dev/null || echo "{}")
+BF_HEALTH=$(curl -s -H "project_id: ${BLOCKFROST_API_KEY_PREPROD}" https://cardano-preprod.blockfrost.io/api/v0/health 2>/dev/null || echo "{}")
 if echo "$BF_HEALTH" | grep -q '"is_healthy":true'; then
     report_pass "Blockfrost Preprod Gateway is healthy and synchronized"
 else
@@ -76,7 +82,7 @@ fi
 
 # 6. Team Faucet Wallet Balance
 echo -e "${BOLD}6. Checking Cardano Preprod Faucet Wallet...${NC}"
-WALLET_JSON=$(curl -s -H "project_id: preprodMoN7D7zVTIrJwtqa0BKHYzTeZUVlVn3G" https://cardano-preprod.blockfrost.io/api/v0/addresses/addr_test1qpu552ygmh07sz7mcdvl7gcca5u6jswpuq92jk04w75ga3qvp2yenrqn90qpeh5rzj0gkdh75hl52yj2drfyclrur9qsst9h6j 2>/dev/null || echo "{}")
+WALLET_JSON=$(curl -s -H "project_id: ${BLOCKFROST_API_KEY_PREPROD}" https://cardano-preprod.blockfrost.io/api/v0/addresses/addr_test1qpu552ygmh07sz7mcdvl7gcca5u6jswpuq92jk04w75ga3qvp2yenrqn90qpeh5rzj0gkdh75hl52yj2drfyclrur9qsst9h6j 2>/dev/null || echo "{}")
 LOVELACE=$(echo "$WALLET_JSON" | grep -o '"quantity":"[0-9]*"' | head -n 1 | cut -d'"' -f4 || echo "0")
 if [ "$LOVELACE" -gt 0 ]; then
     ADA=$(python3 -c "print(f'{$LOVELACE / 1000000:.2f}')")

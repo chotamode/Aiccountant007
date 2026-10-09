@@ -41,23 +41,56 @@ VOICE_DIR = VIDEO_DIR / "voice"
 _run_lock = threading.Lock()
 
 
-def ensure_seller_services() -> None:
-    """Ensure honest and sloppy seller agents are listening on 8003 and 8002."""
+def get_seller_endpoints() -> tuple[str, str]:
+    """Return (honest_url, sloppy_url) based on environment, docker network or probe."""
     import urllib.request
 
-    python_bin = sys.executable
-
-    def is_up(port: int) -> bool:
+    def is_ok(url: str) -> bool:
         try:
-            with urllib.request.urlopen(f"http://127.0.0.1:{port}/availability", timeout=0.5) as resp:
+            with urllib.request.urlopen(f"{url.rstrip('/')}/availability", timeout=0.8) as resp:
+                return resp.status == 200
+        except Exception:  # noqa: BLE001
+            return False
+
+    env_urls = os.environ.get("SELLER_URLS")
+    if env_urls:
+        parts = [u.strip() for u in env_urls.split(",") if u.strip()]
+        if len(parts) >= 2:
+            p0, p1 = parts[0], parts[1]
+            if "sloppy" in p0.lower() or "cheap" in p0.lower():
+                return p1, p0
+            return p0, p1
+
+    if is_ok("http://aicc-seller-honest:8001") and is_ok("http://aicc-seller-sloppy:8002"):
+        return "http://aicc-seller-honest:8001", "http://aicc-seller-sloppy:8002"
+
+    if is_ok("https://proucetni.tzhk.dev") and is_ok("https://cheapbooks.tzhk.dev"):
+        return "https://proucetni.tzhk.dev", "https://cheapbooks.tzhk.dev"
+
+    return "http://127.0.0.1:8003", "http://127.0.0.1:8002"
+
+
+def ensure_seller_services() -> None:
+    """Ensure honest and sloppy seller agents are reachable."""
+    honest_url, sloppy_url = get_seller_endpoints()
+
+    import urllib.request
+
+    def is_up(url: str) -> bool:
+        try:
+            with urllib.request.urlopen(f"{url.rstrip('/')}/availability", timeout=0.8) as resp:
                 return resp.status == 200
         except Exception:  # noqa: BLE001 - any failure means "not up yet"
             return False
 
+    if is_up(honest_url) and is_up(sloppy_url):
+        return
+
+    python_bin = sys.executable
     env_base = os.environ.copy()
     env_base["PAYMENT_MODE"] = "off"
 
-    if not is_up(8003):
+    if not is_up("http://127.0.0.1:8003"):
         env_h = env_base.copy()
         env_h["FIRM_PROFILE"] = "honest"
         env_h["PORT"] = "8003"
@@ -69,7 +102,7 @@ def ensure_seller_services() -> None:
             stderr=subprocess.DEVNULL,
         )
 
-    if not is_up(8002):
+    if not is_up("http://127.0.0.1:8002"):
         env_s = env_base.copy()
         env_s["FIRM_PROFILE"] = "sloppy"
         env_s["PORT"] = "8002"
@@ -83,7 +116,7 @@ def ensure_seller_services() -> None:
 
     # Wait briefly for startup
     for _ in range(15):
-        if is_up(8003) and is_up(8002):
+        if is_up("http://127.0.0.1:8003") and is_up("http://127.0.0.1:8002"):
             break
         time.sleep(0.1)
 
@@ -118,19 +151,18 @@ def execute_scenario_background(scenario: str, state_dir: Path, bus: EventBus | 
             from buyer.orchestrator import build_buyer, run_demo
             from buyer.vault import load_documents
 
+            honest_url, sloppy_url = get_seller_endpoints()
             env = os.environ.copy()
-            env["SELLER_URLS"] = "http://127.0.0.1:8002,http://127.0.0.1:8003"
+            env["SELLER_URLS"] = f"{sloppy_url},{honest_url}"
             invoices_dir = REPO_ROOT / "data" / "invoices"
 
-            buyer = build_buyer(_fresh_run_dir(state_dir), pace=0.1, env=env)
+            buyer = build_buyer(_fresh_run_dir(state_dir), pace=0.08, env=env)
             # Publish into the feed the dashboard is streaming, not the per-run copy.
             buyer = dataclasses.replace(buyer, bus=bus or EventBus(state_dir / "events.jsonl"))
             docs = {d.filename[:2]: d for d in load_documents(invoices_dir, "*.isdoc")}
 
             def batch(*numbers: str):
                 return [docs[n] for n in numbers if n in docs]
-
-            honest_url, sloppy_url = "http://127.0.0.1:8003", "http://127.0.0.1:8002"
 
             if scenario == "demo":
                 run_demo(buyer, invoices_dir, refund_timeout=0.0)

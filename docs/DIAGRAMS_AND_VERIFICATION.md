@@ -302,11 +302,12 @@ cd /root/1projects/Aiccountant007
 # 1. Нода Masumi
 curl -s -I http://127.0.0.1:3001/docs/ | head -n 1
 
-# 2. Blockfrost API (Cardano Preprod)
-curl -s -H "project_id: preprodMoN7D7zVTIrJwtqa0BKHYzTeZUVlVn3G" \
+# 2. Blockfrost API (Cardano Preprod); key from .env
+BLOCKFROST_API_KEY_PREPROD=$(grep -E '^BLOCKFROST_API_KEY_PREPROD=' .env | cut -d= -f2-)
+curl -s -H "project_id: $BLOCKFROST_API_KEY_PREPROD" \
   https://cardano-preprod.blockfrost.io/api/v0/health
 
 # 3. Баланс кошелька команды в тестнете Preprod
-curl -s -H "project_id: preprodMoN7D7zVTIrJwtqa0BKHYzTeZUVlVn3G" \
+curl -s -H "project_id: $BLOCKFROST_API_KEY_PREPROD" \
   https://cardano-preprod.blockfrost.io/api/v0/addresses/addr_test1qpu552ygmh07sz7mcdvl7gcca5u6jswpuq92jk04w75ga3qvp2yenrqn90qpeh5rzj0gkdh75hl52yj2drfyclrur9qsst9h6j | jq .amount
 ```
