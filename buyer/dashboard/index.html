@@ -562,7 +562,6 @@
     </nav>
 
     <div class="controls-group">
-      <button class="btn btn-outline" id="voice-toggle" style="opacity: 0.6;" onclick="toggleVoice()">🔈 Voice: OFF</button>
       <div class="status-pill connected" id="connection-status">
         <span class="status-dot"></span>
         <span id="conn-text">Live Connected</span>
@@ -676,38 +675,9 @@
     const connectionStatus = document.getElementById("connection-status");
     const approvalBanner = document.getElementById("approval-banner");
 
-    let voiceEnabled = true;
     let dealsMap = new Map();
     let currentFilter = 'all';
     let activeApprovalDealId = null;
-
-    function toggleVoice() {
-      voiceEnabled = !voiceEnabled;
-      const btn = document.getElementById("voice-toggle");
-      btn.innerText = voiceEnabled ? "🔊 Voice: ON" : "🔈 Voice: OFF";
-      btn.style.opacity = voiceEnabled ? "1" : "0.6";
-    }
-
-    const audioMap = {
-      "escrow_locked": "/voice/03_hash_escrow.mp3",
-      "verification_failed": "/voice/04_audit_dispute.mp3",
-      "policy_blocked": "/voice/05_injection_defense.mp3",
-      "payment_released": "/voice/06_honest_firm.mp3",
-      "refund_authorized": "/voice/07_refund_settled.mp3",
-      "refund_withdrawn": "/voice/07_refund_settled.mp3"
-    };
-
-    function playAudio(evType) {
-      if (!voiceEnabled) return;
-      const src = audioMap[evType];
-      if (src) {
-        try {
-          const snd = new Audio(src);
-          snd.volume = 0.7;
-          snd.play().catch(e => console.log("Voice autoplay handled:", e));
-        } catch (e) {}
-      }
-    }
 
     async function runScenario(scenarioType, evt) {
       const btn = (evt && evt.currentTarget) ? evt.currentTarget : (event ? event.currentTarget : document.getElementById("btn-run-demo"));
@@ -786,9 +756,6 @@
       const evType = (ev.type || "INFO").toLowerCase();
       const dealId = ev.deal_id || null;
       const timestamp = new Date().toLocaleTimeString();
-
-      // Audio notification
-      playAudio(evType);
 
       // Track deals
       if (dealId) {
@@ -908,15 +875,6 @@
         document.getElementById("conn-text").innerText = "Reconnecting...";
       };
 
-      source.onmessage = (event) => {
-        try {
-          const ev = JSON.parse(event.data);
-          handleEvent(ev);
-        } catch (e) {
-          console.error("SSE parse error:", e);
-        }
-      };
-
       const eventTypes = [
         "discovery_started", "offer_found", "seller_selected",
         "docs_hashed", "job_started", "policy_approved", "policy_blocked",
@@ -939,8 +897,6 @@
     }
 
     async function loadHistory() {
-      const prevVoice = voiceEnabled;
-      voiceEnabled = false; // Mute voice during history preload
       try {
         const resp = await fetch("/history");
         if (resp.ok) {
@@ -951,8 +907,6 @@
         }
       } catch (err) {
         console.error("Load history error:", err);
-      } finally {
-        voiceEnabled = prevVoice;
       }
     }
 
