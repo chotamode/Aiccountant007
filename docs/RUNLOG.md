@@ -10,9 +10,14 @@ This document logs all network configurations, testnet transactions, and end-to-
 |---|---|
 | **Network** | Cardano Preprod Testnet |
 | **Explorer** | [preprod.cardanoscan.io](https://preprod.cardanoscan.io) |
-| **Testnet Address** | `addr_test1qpu552ygmh07sz7mcdvl7gcca5u6jswpuq92jk04w75ga3qvp2yenrqn90qpeh5rzj0gkdh75hl52yj2drfyclrur9qsst9h6j` |
-| **Faucet Top-Up Tx** | `4a84b25e943090c107c97f30ddebf614afb546670aa680e61d8e3703421b9ef8` |
-| **Explorer Link** | [CardanoScan Faucet Tx](https://preprod.cardanoscan.io/transaction/4a84b25e943090c107c97f30ddebf614afb546670aa680e61d8e3703421b9ef8) |
+| **Blockfrost API** | Verified Healthy (`cardano-preprod.blockfrost.io/api/v0/health` -> 200) |
+| **Masumi Payment Node** | `http://localhost:3001` (Live, Swagger at `/docs/`) |
+| **V2 Escrow Contract** | `addr_test1wzs4e6wc95hkwezlccjw9mdvq0r0rsgx6zk34avptga3ftgn37w4g` |
+| **Registry Policy ID** | `67ab0c92c4ac1610895a1c965ee50aba41a8f1513b15240723b3bd0b` |
+| **Purchasing Hot Wallet** | `addr_test1qppp8g8jfld3ztf9cw3sauf67kc87ev0g38nkzj8vtquy3cd2ysw0l6q64jrgtxkp0tp7mwldchajwm62gqjmzswuxqqfrjl02` |
+| **Selling Hot Wallet** | `addr_test1qzcm2see0ph2f4p793em0rfazdc764svmk7ffeevewl6dfd0kf53s49k25tcjehdw854r5ftglyug5zk2m87wxas6n3s7p9r9m` |
+| **Team Faucet Wallet** | `addr_test1qpu552ygmh07sz7mcdvl7gcca5u6jswpuq92jk04w75ga3qvp2yenrqn90qpeh5rzj0gkdh75hl52yj2drfyclrur9qsst9h6j` (10,002.59 tADA) |
+| **Faucet Top-Up Tx** | [`4a84b25e943090c107c97f30ddebf614afb546670aa680e61d8e3703421b9ef8`](https://preprod.cardanoscan.io/transaction/4a84b25e943090c107c97f30ddebf614afb546670aa680e61d8e3703421b9ef8) |
 
 ---
 
