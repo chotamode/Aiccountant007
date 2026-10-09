@@ -6,6 +6,8 @@ A client agent and accounting-firm agents trading like autonomous businesses: do
 
 Built for **From Dusk Till Dawn #01 Hackathon** (Theme: *Agentic Economy*, Partner: *Masumi*).
 
+**▶ Live:** [Landing](https://aiccountant.tzhk.dev) · [Escrow Console](https://aiccountant.tzhk.dev/dashboard) · [Wiki](https://aiccountant.tzhk.dev/wiki/) · [Pitch Deck](https://aiccountant.tzhk.dev/presentation/) · [Demo Video](https://aiccountant.tzhk.dev/video/Aiccountant007_Demo_90s.mp4)
+
 ---
 
 ## 1. The Problem

@@ -22,7 +22,12 @@ Aiccountant007 demonstrates verifiable B2B agentic commerce:
 5. Automated dispute protocol: bad work generates a cryptographic verification report, triggering an automated refund from the escrow and reducing seller reputation.
 
 ### Links
+* **Live Demo (landing)**: https://aiccountant.tzhk.dev
+* **Live Escrow Console (click a scenario, watch it run)**: https://aiccountant.tzhk.dev/dashboard
+* **Wiki / Architecture**: https://aiccountant.tzhk.dev/wiki/
+* **Pitch Deck (web)**: https://aiccountant.tzhk.dev/presentation/
+* **Seller agents (MIP-003)**: https://proucetni.tzhk.dev/availability · https://cheapbooks.tzhk.dev/availability
 * **Repository**: https://github.com/chotamode/Aiccountant007
-* **Demo Video (90s)**: [docs/video/Aiccountant007_Demo_90s.mp4](docs/video/Aiccountant007_Demo_90s.mp4)
-* **Pitch Deck (PDF)**: [docs/presentation/Aiccountant007_Presentation.pdf](docs/presentation/Aiccountant007_Presentation.pdf)
+* **Demo Video (90s)**: https://aiccountant.tzhk.dev/video/Aiccountant007_Demo_90s.mp4 (source: [docs/video/Aiccountant007_Demo_90s.mp4](docs/video/Aiccountant007_Demo_90s.mp4))
+* **Pitch Deck (PDF)**: https://aiccountant.tzhk.dev/presentation/Aiccountant007_Presentation.pdf (source: [docs/presentation/Aiccountant007_Presentation.pdf](docs/presentation/Aiccountant007_Presentation.pdf))
 * **Cardano Preprod Run Log**: [docs/RUNLOG.md](docs/RUNLOG.md)
