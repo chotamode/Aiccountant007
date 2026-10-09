@@ -145,6 +145,7 @@ def create_app(profile: FirmProfile | None = None, payment_mode: str | None = No
             "profile": profile.key,
             "price_lovelace": profile.price_lovelace,
             "payment_mode": mode.value,
+            "ai_model": "deepseek/deepseek-chat",
             "message": "SIMULATED payments" if simulated else "Masumi escrow on preprod",
         }
 

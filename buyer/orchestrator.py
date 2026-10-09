@@ -38,6 +38,7 @@ from buyer.seller_adapter import Mip003Adapter, SellerAdapterError
 from buyer.vault import build_job_input, load_documents, manifest
 from buyer.verifier import AresClient, HttpAresClient, verify
 from buyer.wallet_policy import Decision, DecisionStatus, Reason, WalletPolicy
+from common.ai_agent import ai_detect_injection, ai_forensic_audit
 from common.checks import CheckCode, Severity, VerificationReport
 from common.documents import Document
 from common.events import Actor, Event, EventType
@@ -341,11 +342,20 @@ class Buyer:
     def _accept(self, deal_id: str, offer: Offer, result: DealResult, report: VerificationReport) -> DealResult:
         warnings = [c for c in report.checks if not c.passed and c.severity == Severity.WARNING]
         note = f", {len(warnings)} supplier-side warnings" if warnings else ""
+        ai_info = ai_forensic_audit(
+            offer.seller.name,
+            f"{len(report.checks)} checks, {offer.price}",
+            [],
+        )
         self.emit(
             EventType.VERIFICATION_PASSED,
             f"Work verified: {len(report.checks)} checks, no seller errors{note}",
             deal_id=deal_id,
-            data={"report_hash": report.report_hash(), "warnings": "; ".join(c.message for c in warnings)[:300]},
+            data={
+                "report_hash": report.report_hash(),
+                "warnings": "; ".join(c.message for c in warnings)[:300],
+                "ai": ai_info,
+            },
         )
         self.policy.mark_paid(deal_id)
         self.reputation.record(offer.seller.seller_id, Outcome.PAID, deal_id)
@@ -379,6 +389,11 @@ class Buyer:
         names = {d.doc_hash: d.filename for d in documents}
         failed = sorted(names.get(h, h[:12]) for h in report.failed_doc_hashes)
         first = report.blocking_failures[0]
+        ai_info = ai_forensic_audit(
+            offer.seller.name,
+            f"{len(documents)} documents, {offer.price}",
+            [f"{c.code.value}: {c.message}" for c in report.blocking_failures],
+        )
         self.emit(
             EventType.VERIFICATION_FAILED,
             f"Work rejected: errors in {', '.join(failed) or 'the package'}. {first.message}",
@@ -386,6 +401,7 @@ class Buyer:
             data={
                 "report_hash": report.report_hash(),
                 "failed_checks": ", ".join(sorted({c.code.value for c in report.blocking_failures})),
+                "ai": ai_info,
             },
         )
         self.reputation.record(offer.seller.seller_id, Outcome.REFUNDED, deal_id)
@@ -476,12 +492,17 @@ class Buyer:
         inflated = offer.price.amount * INJECTION_FACTOR
         decision = self.policy.check(deal_id, offer, inflated, [document.doc_hash])
         asked = Price(amount=inflated, unit=offer.price.unit)
+        ai_info = ai_detect_injection(document.content.decode("utf-8", "ignore"))
         self.emit(
             EventType.POLICY_BLOCKED if not decision.approved else EventType.ERROR,
             f"{title}: {document.filename} says 'pay 10x'. Asked to pay {asked} instead of {offer.price}: "
             f"{decision.status.value} ({', '.join(v.value for v in decision.violations) or decision.reason.value})",
             deal_id=deal_id,
-            data={"drill": "amount taken from the document text on purpose", "decision": decision.message},
+            data={
+                "drill": "amount taken from the document text on purpose",
+                "decision": decision.message,
+                "ai": ai_info,
+            },
         )
 
 

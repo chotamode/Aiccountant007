@@ -38,7 +38,7 @@ def make_job_input() -> JobInput:
 
 def real_seller(profile: FirmProfile) -> Mip003Adapter:
     """The actual seller app, in-process: no network."""
-    return Mip003Adapter(BASE_URL, client=TestClient(create_app(profile, payment_mode="off")))
+    return Mip003Adapter(BASE_URL, client=TestClient(create_app(profile, payment_mode="off")))  # type: ignore[arg-type]
 
 
 def fake_seller(handler: Handler) -> Mip003Adapter:

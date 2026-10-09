@@ -562,7 +562,7 @@
     </nav>
 
     <div class="controls-group">
-      <button class="btn btn-outline" id="voice-toggle" onclick="toggleVoice()">🔊 Voice: ON</button>
+      <button class="btn btn-outline" id="voice-toggle" style="opacity: 0.6;" onclick="toggleVoice()">🔈 Voice: OFF</button>
       <div class="status-pill connected" id="connection-status">
         <span class="status-dot"></span>
         <span id="conn-text">Live Connected</span>
@@ -840,12 +840,30 @@
         `;
       }
 
+      let aiHtml = "";
+      if (ev.data && ev.data.ai) {
+        const ai = ev.data.ai;
+        const text = ai.reasoning || ai.threat || "";
+        if (text) {
+          aiHtml = `
+            <div style="margin-top: 8px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 0.8125rem;">
+              <div style="font-weight: 600; color: var(--primary); display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                <span>🧠 AI Forensic Intelligence (${ai.verdict || (ai.threat_detected ? 'ATTACK BLOCKED' : 'APPROVED')})</span>
+                <span style="font-size: 0.6875rem; font-family: var(--font-mono); color: var(--ink-faint);">${ai.model || 'deepseek-chat'}</span>
+              </div>
+              <div style="color: var(--ink-muted); line-height: 1.45;">${text}</div>
+            </div>
+          `;
+        }
+      }
+
       item.innerHTML = `
         <div class="event-top">
           <div class="event-tags">${badgesHtml}</div>
           <div class="event-time">${timestamp}</div>
         </div>
         <div class="event-msg">${ev.msg || ""}</div>
+        ${aiHtml}
         ${footerHtml}
       `;
 

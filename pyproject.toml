@@ -15,6 +15,7 @@ agents = [
     "httpx",
     "python-dotenv",
     "masumi",
+    "openai",
 ]
 dev = ["pytest"]
 
