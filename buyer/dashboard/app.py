@@ -20,6 +20,7 @@ from buyer.events_bus import DEFAULT_EVENTS_PATH, EventBus
 from common.events import Actor, Event, EventType
 
 INDEX_HTML_PATH = Path(__file__).parent / "index.html"
+VOICE_DIR = Path(__file__).resolve().parent.parent.parent / "docs" / "video" / "voice"
 
 
 def create_dashboard_app(bus: EventBus | None = None) -> FastAPI:
@@ -27,6 +28,11 @@ def create_dashboard_app(bus: EventBus | None = None) -> FastAPI:
     bus = bus or EventBus(events_path)
 
     app = FastAPI(title="Aiccountant007 Dashboard")
+
+    if VOICE_DIR.exists():
+        from fastapi.staticfiles import StaticFiles
+
+        app.mount("/voice", StaticFiles(directory=str(VOICE_DIR)), name="voice")
 
     @app.get("/", response_class=HTMLResponse)
     def index() -> str:

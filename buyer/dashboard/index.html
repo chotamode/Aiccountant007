@@ -197,7 +197,10 @@
       <span>🛡️ Aiccountant007</span>
       <span style="font-size: 0.9rem; font-weight: normal; color: var(--text-muted);">Autonomous Auditing & Cardano Escrow</span>
     </h1>
-    <div class="status-badge live" id="connection-status">Live Connected</div>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <button id="voice-toggle" onclick="toggleVoice()" style="background: #1e293b; border: 1px solid var(--border); color: var(--text); padding: 4px 12px; border-radius: 9999px; cursor: pointer; font-size: 0.85rem;">🔊 Voice: ON</button>
+      <div class="status-badge live" id="connection-status">Live Connected</div>
+    </div>
   </header>
 
   <div class="container">
@@ -218,6 +221,35 @@
     const eventsFeed = document.getElementById("events-feed");
     const dealsList = document.getElementById("deals-list");
     const connectionStatus = document.getElementById("connection-status");
+
+    let voiceEnabled = true;
+    function toggleVoice() {
+      voiceEnabled = !voiceEnabled;
+      const btn = document.getElementById("voice-toggle");
+      btn.innerText = voiceEnabled ? "🔊 Voice: ON" : "🔈 Voice: OFF";
+      btn.style.opacity = voiceEnabled ? "1" : "0.6";
+    }
+
+    const audioMap = {
+      "escrow_locked": "/voice/03_hash_escrow.mp3",
+      "verification_failed": "/voice/04_audit_dispute.mp3",
+      "policy_blocked": "/voice/05_injection_defense.mp3",
+      "payment_released": "/voice/06_honest_firm.mp3",
+      "refund_authorized": "/voice/07_refund_settled.mp3",
+      "refund_withdrawn": "/voice/07_refund_settled.mp3"
+    };
+
+    function playAudioForEvent(evType) {
+      if (!voiceEnabled) return;
+      const src = audioMap[evType];
+      if (src) {
+        try {
+          const snd = new Audio(src);
+          snd.volume = 0.7;
+          snd.play().catch(e => console.log("Voice alert prevented:", e));
+        } catch (e) {}
+      }
+    }
 
     const deals = new Map();
     let activeDealFilter = null;
@@ -320,6 +352,7 @@
       `;
 
       eventsFeed.insertBefore(item, eventsFeed.firstChild);
+      playAudioForEvent(ev.type);
     }
 
     const eventSource = new EventSource("/events");

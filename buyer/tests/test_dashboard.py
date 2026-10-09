@@ -83,3 +83,13 @@ def test_dashboard_human_approval():
         assert len(history) == 1
         assert history[0].type == EventType.HUMAN_APPROVED
         assert history[0].deal_id == "deal-xyz"
+
+
+def test_dashboard_voice_static():
+    app = create_dashboard_app()
+    client = TestClient(app)
+    # Check that voice static endpoint returns the audio clip
+    resp = client.get("/voice/01_intro.mp3")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] in ("audio/mpeg", "audio/mp3", "application/octet-stream")
+
