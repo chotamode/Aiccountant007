@@ -9,20 +9,28 @@ PORT_HONEST=8003
 PORT_SLOPPY=8002
 PORT_DASHBOARD=8004
 
+if [ -f ".venv/bin/python" ]; then
+  PYTHON=".venv/bin/python"
+elif command -v python3 >/dev/null 2>&1; then
+  PYTHON="python3"
+else
+  PYTHON="python"
+fi
+
 # Clean old demo state
 rm -rf buyer/state
 mkdir -p buyer/state
 
 echo "==> Starting Seller Honest (ProÚčetní) on port $PORT_HONEST..."
-FIRM_PROFILE=honest PORT=$PORT_HONEST PAYMENT_MODE=off python -m seller.app > /tmp/seller_honest.log 2>&1 &
+FIRM_PROFILE=honest PORT=$PORT_HONEST PAYMENT_MODE=off $PYTHON -m seller.app > /tmp/seller_honest.log 2>&1 &
 PID_HONEST=$!
 
 echo "==> Starting Seller Sloppy (CheapBooks) on port $PORT_SLOPPY..."
-FIRM_PROFILE=sloppy PORT=$PORT_SLOPPY PAYMENT_MODE=off python -m seller.app > /tmp/seller_sloppy.log 2>&1 &
+FIRM_PROFILE=sloppy PORT=$PORT_SLOPPY PAYMENT_MODE=off $PYTHON -m seller.app > /tmp/seller_sloppy.log 2>&1 &
 PID_SLOPPY=$!
 
 echo "==> Starting Buyer Dashboard on port $PORT_DASHBOARD..."
-PORT=$PORT_DASHBOARD EVENTS_PATH=buyer/state/events.jsonl python -m buyer.dashboard.app > /tmp/buyer_dash.log 2>&1 &
+PORT=$PORT_DASHBOARD EVENTS_PATH=buyer/state/events.jsonl $PYTHON -m buyer.dashboard.app > /tmp/buyer_dash.log 2>&1 &
 PID_DASHBOARD=$!
 
 cleanup() {
@@ -44,6 +52,6 @@ done
 
 echo "==> Running Buyer Orchestrator demo scenario..."
 export SELLER_URLS="http://127.0.0.1:$PORT_SLOPPY,http://127.0.0.1:$PORT_HONEST"
-python -m buyer.orchestrator --scenario demo --pace 0.1
+$PYTHON -m buyer.orchestrator --scenario demo --pace 0.1
 
 echo "==> Demo run completed successfully!"
