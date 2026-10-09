@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import hashlib
+from pathlib import Path
 
-from buyer.tests.conftest import INVOICES
 from buyer.vault import build_job_input, load_documents, manifest
 from common.documents import DocumentFormat
 from common.hashing import masumi_input_hash
+
+INVOICES = Path(__file__).resolve().parents[2] / "data" / "invoices"
 
 
 def test_loads_isdoc_and_pdf_sorted_by_name():
